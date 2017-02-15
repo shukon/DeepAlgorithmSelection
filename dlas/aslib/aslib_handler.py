@@ -1,6 +1,4 @@
 """ This is an ASlib-handler, providing problem-specific functionality. """
-import sys
-sys.path.append('/home/shuki')
 import os
 import re
 import arff

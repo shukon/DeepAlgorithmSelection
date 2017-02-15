@@ -15,6 +15,12 @@ class DataPreparer(object):
     main workflow.
     For both, image and label conversion, one can choose between using one of
     the provided methods or a customized one.
+
+    Args:
+        config -- dictionary with config-details
+        instance_path -- path to instance-files to be read in
+        img_dir -- where to put imagedata
+        label_dir -- where to put labeldata
     """
 
     def __init__(self, config, instance_path=None, img_dir=None, label_dir=None):
@@ -26,7 +32,7 @@ class DataPreparer(object):
         self.label_prep = None
         self._set_image_prep(image_mode)
         self._set_label_prep(label_mode)
-        self.image_dim = config["image_dim"]
+        self.config = config
 
         if instance_path:
             self.inst_path = instance_path
@@ -41,7 +47,7 @@ class DataPreparer(object):
             #else:
             #    self.log.warning("Somethings wrong")
             #    instDir = os.path.join(os.getcwd(), "instances/")
-            pass
+            raise ValueError("No instance path specified!")
         self.img_dir = img_dir
         self.label_dir = label_dir
         #TODO
@@ -78,8 +84,8 @@ class DataPreparer(object):
         else:
             image_data, times = self.image_prep.get_image_data(local_inst)
 
-        image_data = np.reshape(image_data, (-1, 1, self.image_dim,
-                                             self.image_dim))
+        image_data = np.reshape(image_data, (-1, 1, self.config["image-dim"],
+                                             self.config["image_dim"]))
         image_data = self.float32(image_data)
         image_data = self.normalize(image_data)
         #imageData = np.nan_to_num(imageData)
@@ -108,14 +114,14 @@ class DataPreparer(object):
         label_data = np.reshape(label_data, (-1, num_solvers))
         label_data = self.float32(label_data)
 
-        np.save(self.label_dir, label_data)
+        if self.label_dir: np.save(self.label_dir, label_data)
         return label_data
 
     def _set_image_prep(self, image_mode):
         if image_mode == "TextToImage":
             self.image_prep = TextToImage()
         elif image_mode == "FromImage":
-            self.image_prep = FromImage()
+            self.image_prep = FromImage(self.config)
         else:
             raise Exception(image_mode + " not implemented.")
 

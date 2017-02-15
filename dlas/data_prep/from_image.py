@@ -10,9 +10,13 @@ class FromImage(ImagePrep):
     Implements image conversion from text-file to image-file.
     """
     # TODO: implement options
-    def __init__(self, image_dim=128):
+    def __init__(self, **config):
         super(FromImage, self).__init__()
-        self.image_dim = image_dim
+        self.image_dim = config["image-dim"]
+        if config["resize-method"] == 'LANCZOS':
+            self.resize_method = Image.LANCZOS
+        else:
+            raise ValueError("{} is not a valid resize-option for FromImage-conversion".format(config["resize-method"]))
 
     def get_image_data(self, local_inst):
         """
@@ -31,7 +35,7 @@ class FromImage(ImagePrep):
             start = time.clock()
             img = Image.open(i)
             img = img.convert('L')
-            img = img.resize((self.image_dim,self.image_dim) ,Image.LANCZOS)
+            img = img.resize((self.image_dim, self.image_dim), Image.LANCZOS)
             #img_path, ext = os.path.splitext(i)
             #if save: tmp.save(f+"_resized-"+str(imgDim)+".jpeg","JPEG")
             stop = time.clock()

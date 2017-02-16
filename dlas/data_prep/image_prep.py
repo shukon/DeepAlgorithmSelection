@@ -5,11 +5,9 @@ class ImagePrep(object):
     Base class for image converter.
     """
 
-    def __init__(self, inst_path, output_dir=None):
+    def __init__(self, config, output_dir=None):
         self.log = log.getLogger("ImagePrep")
-
-        self.inst_path = inst_path
-        self.output_dir = output_dir
+        self.image_mode = config["image-mode"]
 
     def get_image_data(self, local_inst):
         """

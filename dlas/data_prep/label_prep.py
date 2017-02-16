@@ -5,11 +5,11 @@ class LabelPrep(object):
     Base class for Label constructor.
     """
 
-    def __init__(self, inst_path, output_dir=None):
+    def __init__(self, config, aslib, output_dir=None):
         self.log = log.getLogger("LabelPrep")
-
-        self.inst_path = inst_path
-        self.output_dir = output_dir
+        self.config = config
+        self.aslib = aslib
+        self.label_mode = config["label-mode"]
 
     def get_label_data(self, inst):
         """

@@ -29,11 +29,11 @@ def prep(scen, config, instance_path, recalculate = False):
     """
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:
     inst = aslib.get_instances(scen, False)
-    preparer = DataPreparer(config, instance_path, "images/", "labels/")
+    preparer = DataPreparer(config, aslib, instance_path, "images/", "labels/")
 
-    local_inst = [aslib.local_path(scen,i) for i in inst]
+    local_inst = [aslib.local_path(scen, i) for i in inst]
     X = preparer.get_image_data(local_inst, recalculate)  #  t = conversion times
-    y = preparer.get_label_data(local_inst, recalculate)
+    y = preparer.get_label_data(inst, recalculate)
 
     return inst, X, y
 
@@ -42,7 +42,7 @@ def run_experiment(scen, ID, config, skipIfResultExists = True):
     Run experiment (that is defined by name through scen and ID), which is
     further defined in config.
     """
-    NET_CONF_ID = config["runID"]  # THIS IS VERY IMPORTANT - the individual experiment-ID to make sure results are not confused.
+    log.basicConfig(level = log.DEBUG)
     config = conf.update(config, updates = [("scen",scen),("num-solvers",
                 len(aslib.get_solvers(scen)))])
 
@@ -56,7 +56,7 @@ def run_experiment(scen, ID, config, skipIfResultExists = True):
         os.makedirs(resultPath)
 
     # We assume ASlibHandler is matching from execdir
-    data = prep(scen, config, ".", recalculate = False)
+    data = prep(scen, config, "instances/"+scen, recalculate = False)
     inst, X, y = data
 
     scores = cross_validation(scen, ID, inst, X, y, config, resultPath, rep)
@@ -172,8 +172,8 @@ if __name__ == "__main__":
     scen = sys.argv[2]
     ID = sys.argv[3]
     if sys.argv[1] == "exp":
-        c = exp.getConfig(ID, scen)
-        run_experiment(scen, c["runID"], c, skipIfResultExists=False)
+        c = exp.getConfig(scen, ID)
+        run_experiment(scen, ID, c, skipIfResultExists=False)
     elif sys.argv[1] == "stat":
         # Print stats of scenario
         log.info("Scenario-statistics for {}:".format(scen))

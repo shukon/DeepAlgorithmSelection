@@ -10,13 +10,16 @@ class FromImage(ImagePrep):
     Implements image conversion from text-file to image-file.
     """
     # TODO: implement options
-    def __init__(self, **config):
-        super(FromImage, self).__init__()
+    def __init__(self, config):
+        super(FromImage, self).__init__(config)
         self.image_dim = config["image-dim"]
         if config["resize-method"] == 'LANCZOS':
             self.resize_method = Image.LANCZOS
         else:
             raise ValueError("{} is not a valid resize-option for FromImage-conversion".format(config["resize-method"]))
+
+        self.id = "-".join([self.image_mode,
+                       str(self.image_dim), config["resize-method"]])
 
     def get_image_data(self, local_inst):
         """

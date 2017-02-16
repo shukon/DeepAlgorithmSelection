@@ -63,10 +63,10 @@ class ASlibHandler:
             self._load_all_inst()
 
         log.info("Loading {} from \"{}\" into memory.".format(scen, self.source))
-        path = os.path.join(os.getcwd(), self.source, scen,
-                            "/algorithm_runs.arff")
+        path = os.path.join(os.getcwd(), self.source, scen, "algorithm_runs.arff")
+        log.debug(path)
         # Save scenario-data data[scen][inst][solver] = (status, time, repitions)
-        dataset = arff.load(open(path, "rb"))
+        dataset = arff.load(open(path, "r"))
         self.data[scen] = {}
         # Keep track of matched instances
         aslib_inst, local_inst, notfound = [], [], []
@@ -100,8 +100,9 @@ class ASlibHandler:
 
         # Mark Cross-Validation-folds
         path = os.getcwd() + "/" + self.source + scen + "/cv.arff"
-        cv_data = arff.load(open(path, "rb"))
+        cv_data = arff.load(open(path, "r"))
         for row in cv_data["data"]:
+            print(row)
             self.data[scen][row[0]][3] = row[2]
 
         assert len(aslib_inst)==len(set([a[0] for a in dataset["data"]]))
@@ -125,24 +126,21 @@ class ASlibHandler:
         # Only consider the following files (ignore images)
         accepted = re.compile("^.*\.(?!jpg$|png$)[^.]+$")
         # Define instance dir (relative/root...), so you can have instances in a remote place
-        if os.getcwd().startswith("/home/marbenj"):
-            iDir = "/data/aad/benchmarks/"
-            tempDir = "/home/marbenj/instances/"
-        else:
-            iDir = os.path.join(os.getcwd(),"instances/")
-        for instDir in [tempDir, iDir]:
+        # iDir = "/data/aad/benchmarks/"
+        iDir = os.path.join(os.getcwd(),"instances/")
+        for instDir in [iDir]:
             # Loop over all domains
             for d in domains:
                 instances = []
                 path = os.path.join(instDir, d)
+                cwd = os.path.abspath(os.getcwd())
                 for root, dirs, files in os.walk(path):
                     for f in files:
                         if  (accepted.match(f) and not (  # ignore the following folders cuz of dead links
                                 root.startswith("/data/aad/benchmarks/SAT/random-wo-duplicates")
                                 or root.startswith("/data/aad/benchmarks/SAT/industrial-wo-duplicates")
                                 or root.startswith("/data/aad/benchmarks/SAT/combinatorial-wo-duplicates"))):
-                            relDir = os.path.relpath(root, path)
-                            relFile = os.path.join(relDir, f) # save relative path
+                            relFile = os.path.join(os.path.relpath(root, cwd), f) # save relative path
                             # Split up and save as 4-tuple (whole name, dir, name, ext)
                             ilocDir, ilocName = os.path.split(relFile)
                             ilocName, ilocExt = os.path.splitext(ilocName)
@@ -157,7 +155,7 @@ class ASlibHandler:
 
     def _match(self, inst, scen):
         """ Matches an instance in a scenario to the local file path.
-        
+
         Args:
             inst -- instance as specified in ASlib
             scen -- scenario
@@ -217,7 +215,7 @@ class ASlibHandler:
     def get_solvers(self, scen):
         """ Return a list with solvers used in (a random instance of) scenario.
         """
-        inst = random.choice(self.data[scen])
+        inst = random.choice(list(self.data[scen].keys()))
         return self.data[scen][inst][1].keys()
 
     def get_labels(self, scen, inst, label = "status", convID = None):
@@ -236,7 +234,7 @@ class ASlibHandler:
             if label == "status":
                 result.append(int(self.data[scen][inst][1][solver][0] == "ok"))
             elif label[:3] == "par":
-                par_factor = label[3:]
+                par_factor = int(label[3:])
                 if self.data[scen][inst][1][solver][0] == "ok":
                     result.append(self.data[scen][inst][1][solver][1])
                 else:
@@ -313,7 +311,7 @@ class ASlibHandler:
         baseline["random"] = self.evaluate(scen, randInst, randSolv)
         # Get all instances as often as there are solvers
         goodRandInst = [[i for l in self.get_labels(scen,i,label="status") if l] for i in inst]
-        goodRandSolv = [[l for l in range(self.getNumSolvers(scen)) if self.get_labels(scen,i,label="status")[l]] for i in inst]
+        goodRandSolv = [[l for l in range(len(self.get_solvers(scen))) if self.get_labels(scen,i,label="status")[l]] for i in inst]
         goodRandInst = [a for b in goodRandInst for a in b]
         goodRandSolv = [a for b in goodRandSolv for a in b] # write a function goddamn
         baseline["good-random"] = self.evaluate(scen, goodRandInst, goodRandSolv)
@@ -343,8 +341,7 @@ class ASlibHandler:
 
     def VBS(self, scen, inst = None):
         if inst == None: inst = self.get_instances(scen)
-        return [self.get_labels(scen, i,
-            "par10").index(min(self.get_labels(scen, i, "par10"))) for i in inst]
+        return [self.get_labels(scen, i, "par10").index(min(self.get_labels(scen, i, "par10"))) for i in inst]
 
     def good_estimate(self, scen, inst = None, mode = "PAR10"):
         """ TODO What is this function doing? """
@@ -371,9 +368,11 @@ class ASlibHandler:
         return res
 
 if __name__ == "__main__":
+    log.basicConfig(level = log.DEBUG)
     scen = ["TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
     #with open("aslib_loaded.pickle", "rb") as f: a.data = pickle.load(f)
+    a = ASlibHandler()
     for s in scen:
-        a.loadScenario(s)
+        a.load_scenario(s)
         log.info(a.baseline(s))
     with open("aslib_loaded.pickle", "wb") as f: pickle.dump(a.data, f)

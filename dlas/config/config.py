@@ -6,27 +6,29 @@ import sys
 import logging as log
 
 
-def conf(NET_CONF_ID, updates = []):
+def conf(scen, ID, updates = []):
     """ This function creates a configuration with basic parameters, which will
     (at the end of the function) be overwritten with the values in the updates-
     dictionary. """
     config = {}
 
-    config["scen"] = None
-    config["ID"]   = "default"
-    config["runID"] = NET_CONF_ID  # Must be unique!
+    # An experiment is uniquely specified by the scenario-name and the ID
+    config["scen"] = scen
+    config["ID"]   = ID
 
     config["repetition"] = 0
 
     # Image Conversion
-    config["image-id"] = "text2image"
+    config["image-mode"] = "FromImage"
     config["unpack"] = True          # unpack before conversion
     config["remove-comments"] = True  # remove comments (enforced by data-prep)
     config["image-dim"] = 128
     config["rounding-method"]="ceil"
     config["resize-method"]="LANCZOS"
 
-    config["scale"] = 1  # TODO ??
+    # Labels
+    config["label-mode"] = "MultiLabelBase"
+    config["label-norm"] = "TimesGood"
 
     # Neural network configs:
     config["nn-model"] = "cnn"
@@ -54,18 +56,24 @@ def conf(NET_CONF_ID, updates = []):
 
 def update(config, updates = []):
     for k, v in updates:
-        #log.debug(k, v)
+        log.debug(str(k)+" = "+str(v))
         config[k] = v
+
+    if config["num-labels"] == "num-solvers" and "num-solvers" in config:
+        config["num-labels"] == config["num-solvers"]
 
     # results/{scen}/{expID}/{repitition}/
     config["resultPath"]      = "results/{}/{}/{}/"  # .format(scen,id,rep) (done in main)
-    config["modelPath"]       = "results/{}_"+config["runID"]+"_{}of{}_rep{}_model.npz"  # .format(scen, currect-fold, total-folds, repetition)
 
     save(config)
     return config
 
 def save(config):
-    confPath = "configs/config_{}_{}.pickle".format(config["scen"], config["runID"])
+    path = config["resultPath"].format(config["scen"], config["ID"],
+                                       config["repetition"])
 
-    with open(confPath, "wb") as handle:
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    with open(os.path.join(path, "config.pickle"), "wb") as handle:
         pickle.dump(config, handle)

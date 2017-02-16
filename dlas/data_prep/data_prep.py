@@ -23,16 +23,17 @@ class DataPreparer(object):
         label_dir -- where to put labeldata
     """
 
-    def __init__(self, config, instance_path=None, img_dir=None, label_dir=None):
+    def __init__(self, config, aslib, instance_path=None, img_dir=None, label_dir=None):
         self.log = log.getLogger('DataPreparer')
 
-        image_mode, label_mode = config["image_mode"], config["label_mode"]
+        self.config = config
+        self.aslib = aslib
+        image_mode, label_mode = config["image-mode"], config["label-mode"]
 
         self.image_prep = None
         self.label_prep = None
         self._set_image_prep(image_mode)
         self._set_label_prep(label_mode)
-        self.config = config
 
         if instance_path:
             self.inst_path = instance_path
@@ -51,6 +52,8 @@ class DataPreparer(object):
         self.img_dir = img_dir
         self.label_dir = label_dir
         #TODO
+        self.log.debug("img_dir: {}, label_dir: {}".format(self.img_dir,
+            self.label_dir))
 
     def normalize(self, data):
         mean = np.mean(data, axis=0)
@@ -78,43 +81,53 @@ class DataPreparer(object):
         Sideeffect:
             if self.img_output, writes data into output_dir
         """
+        path = os.path.join(self.img_dir, self.image_prep.id+".npy")
+        self.log.debug("Checking for image-data in {}".format(path))
 
-        if (not recalculate and self.img_dir and os.path.isfile(self.img_dir)):
-            image_data = np.load(self.img_dir)  # TODO catch?
+        if (not recalculate and self.img_dir and os.path.isfile(path)):
+            self.log.debug("Load image-data from {}".format(path))
+            return np.load(path)  # TODO catch?
         else:
+            self.log.debug("Calculating image-data ... ")
             image_data, times = self.image_prep.get_image_data(local_inst)
+            self.log.debug("done!")
 
         image_data = np.reshape(image_data, (-1, 1, self.config["image-dim"],
-                                             self.config["image_dim"]))
+                                             self.config["image-dim"]))
         image_data = self.float32(image_data)
         image_data = self.normalize(image_data)
-        #imageData = np.nan_to_num(imageData)
-        assert(np.isnan(image_data).any(), False)
+        image_data = np.nan_to_num(image_data)
+        assert(np.isnan(image_data).any, False)
 
-        np.save(self.img_dir, image_data)
+        self.log.debug("Saving image-data in {}".format(path))
+        np.save(path, image_data)
         return image_data
 
-    def get_label_data(self, local_inst, recalculate=False):
+    def get_label_data(self, inst, recalculate=False):
         """
-        Provides the label-data for a scenario scen with specific conversion-properties
-        specified in config.
+        Provides the label-data for a scenario scen with specific
+        conversion-properties specified in config.
+        Instances as in aslib-instances (not local-paths!).
 
         Returns label_data
 
         Sideeffect:
             if self.label_output, writes data into output_dir
         """
-        num_solvers = None # TODO
-
-        if (not recalculate and self.label_dir and os.path.isfile(self.label_dir)):
-            label_data = np.load(self.label_dir)
+        path = os.path.join(self.label_dir, self.label_prep.id+".npy")
+        self.log.debug("Checking for label-data in {}".format(path))
+        if (not recalculate and self.label_dir and os.path.isfile(path)):
+            self.log.debug("Loading label-data from {}".format(path))
+            return np.load(path)
         else:
-            label_data = self.label_prep.get_label_data(local_inst)
+            self.log.debug("Calculating label-data.")
+            label_data = self.label_prep.get_label_data(inst)
 
-        label_data = np.reshape(label_data, (-1, num_solvers))
+        label_data = np.reshape(label_data, (len(inst), -1))
         label_data = self.float32(label_data)
 
-        if self.label_dir: np.save(self.label_dir, label_data)
+        if self.label_dir:
+            np.save(path, label_data)
         return label_data
 
     def _set_image_prep(self, image_mode):
@@ -127,6 +140,6 @@ class DataPreparer(object):
 
     def _set_label_prep(self, label_mode):
         if label_mode == "MultiLabelBase":
-            self.label_prep = MultiLabelBase()
+            self.label_prep = MultiLabelBase(self.config, self.aslib)
         else:
             raise Exception(label_mode + " not implemented.")

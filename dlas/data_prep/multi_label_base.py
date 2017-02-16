@@ -7,12 +7,13 @@ class MultiLabelBase(LabelPrep):
     Implements image conversion from text-file to image-file.
     """
     # TODO: implement options
-    def __init__(self, label_mode="TimesGood"):
+    def __init__(self, config, aslib):
         """
         Base-class provides aslib-instance (self.aslib)
         """
-        super(MultiLabelBase, self).__init__()
-        self.label_mode = label_mode
+        super(MultiLabelBase, self).__init__(config, aslib)
+        self.label_norm = config["label-norm"]
+        self.id = "-".join([self.label_mode, self.label_norm])
 
     def get_label_data(self, inst):
         """
@@ -25,13 +26,14 @@ class MultiLabelBase(LabelPrep):
                 image-data
         """
         y = np.array([])
-        cutoff = None # TODO
+        cutoff = self.aslib.scenInfo[self.config["scen"]]["cutoffTime"]
 
         for i in inst:
-            par10labels = aslib.getLabels(scen, i, label="PAR10")
+            par10labels = self.aslib.get_labels(self.config["scen"], i,
+                    label="par10")
             time_weighted = [cutoff*10-l for l in par10labels]
 
-            if self.label_mode == "TimesGood":
+            if self.config["label-norm"] == "TimesGood":
                 labels = [k/float(cutoff*10) for k in time_weighted]
                 y = np.append(y, labels)
             else:
@@ -43,8 +45,7 @@ class MultiLabelBase(LabelPrep):
             elif self.label_mode == "TimesSum": y = np.append(y, norm("sum", [aslib.scenInfo[scen]["cutoffTime"]*10-l for l in par10labels]))
             elif self.label_mode == "TimesLog": y = np.append(y, norm("log", [(aslib.scenInfo[scen]["cutoffTime"]*10)-l for l in par10labels]))
             """
-        np.save(labelPath, y)
-        return data, times
+        return y
         """
         def norm(self):
             if mode == "log": return [k/float(aslib.scenInfo[scen]["cutoffTime"]) for k in l]

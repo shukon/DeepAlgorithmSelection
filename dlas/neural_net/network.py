@@ -167,7 +167,7 @@ class Network:
 
         # And, finally, the 10-unit output layer with 50% dropout on its inputs:
         network = lasagne.layers.DenseLayer(
-                network, num_units=config["numSolvers"],
+                network, num_units=self.config["num-labels"],
                 nonlinearity=lasagne.nonlinearities.sigmoid)
                 #nonlinearity=lasagne.nonlinearities.softmax)
 
@@ -194,7 +194,7 @@ class Network:
         # Note: at the moment all nodes are reduced by half
 
         # Input layer, as usual:
-        dim = self.config["imageDim"]
+        dim = self.config["image-dim"]
         network = lasagne.layers.InputLayer(shape=(None, 1, dim, dim),
                                             input_var=input_var)
 
@@ -233,15 +233,15 @@ class Network:
 
         # And, finally, the 10-unit output layer with 50% dropout on its inputs:
         network = lasagne.layers.DenseLayer(
-                network, num_units=config["numSolvers"],
+                network, num_units=self.config["num-solvers"],
                 nonlinearity=lasagne.nonlinearities.sigmoid)
                 #nonlinearity=lasagne.nonlinearities.softmax)
 
         # Set regresssion to true for multi-label-classification
         network.regression=True
 
-        network.update_learning_rate=theano.shared(float32(config["nn-learningrate-start"]))
-        network.update_momentum=theano.shared(float32(config["nn-momentum-start"]))
+        network.update_learning_rate=theano.shared(float32(self.config["nn-learningrate-start"]))
+        network.update_momentum=theano.shared(float32(self.config["nn-momentum-start"]))
 
         return network
 
@@ -333,7 +333,6 @@ class Network:
         update_meth = self.config["nn-update-method"]
         learningRate, momentum = self.config["nn-learningrate-start"], self.config["nn-momentum-start"]
         if update_meth == "sgd": self.updates = lasagne.updates.sgd(self.loss, self.params, learningRate)
-        if self.config["resizeMethod"] == "NEAREST": self.updates = lasagne.updates.adagrad(self.loss,self.params)
         elif update_meth == "momentum": self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learningRate, momentum=0.9)
         elif update_meth == "nesterov": self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learningRate, momentum=0.9)
         elif update_meth == "adam"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
@@ -373,21 +372,15 @@ class Network:
         scen = self.config["scen"]
 
         useValidation = self.config["useValidationSet"]
-        earlyStop = self.config["earlyStop"]
 
         if self.config["model"] == "cnn1D":
-            X = X.reshape(-1,1,config["imageDim"]*config["imageDim"])
-            X_val = X_val.reshape(-1,1,config["imageDim"]*config["imageDim"])
-            X_test = X_test.reshape(-1,1,config["imageDim"]*config["imageDim"])
+            X = X.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
+            X_val = X_val.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
+            X_test = X_test.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
 
         # Define custom batchsizes for val and test to evalutate whole sets
         batchsize_val = X_val.shape[0]/8  # Number of instances in set/ 2. TODO: This still might lead to MemOut, do something about it. Also Integer Division, possibly skipping one instance
         batchsize_test = X_test.shape[0]/8  # Number of instances in set/ 2. TODO: This still might lead to MemOut, do something about it. Also Integer Division, possibly skipping one instance
-
-        if earlyStop:
-            bestValValue = 100000000
-            bestValNetwork = None
-            bestValEpoch = 0
 
         # We iterate over epochs:
         for epoch in range(numEpochs):
@@ -468,7 +461,6 @@ class Network:
             log.info(res)
 
         # Saving the network weights
-        if earlyStop and bestValNetwork: lasagne.layers.set_all_param_values(self.network, bestValNetwork)
         if save:
             path = self.config["modelPath"].format(scen, cv[0], cv[1], self.config["repetition"])
             log.info("Save network in {}".format(path))

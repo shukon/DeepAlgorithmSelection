@@ -3,18 +3,19 @@ import random
 
 import dlas.config.config as conf
 
-def getConfig(e, s):
-    if e == "TSP":
-        return tsp(s)
+def getConfig(s, e):
+    if e == "test":
+        return tsp(s, e)
     elif e == "random":
         return tspRand(s)
     else:
-        print("{} is not defined as an experiment!".format(e))
+        raise ValueError("{} is not defined as an experiment!".format(e))
 
-def tsp(s):
-    c = conf.conf("TSP-resize-100-base", updates=[("learningRate",0.01),
+def tsp(s, ID):
+    c = conf.conf(s, ID, updates=[#("learningRate",0.01),
                     ("image-id","FromImage"),("labelID", "MultiLabelBase"),
-                    ("imageDim",100),("model","cnn"),
+                    ("num-labels","num-solvers"),
+                    ("image-dim",100),("model","cnn"),
                     ("numEpochs",30),("batchsize",64),
                     #("lossFunction","squared_error")
                     ("lossFunction","binary_crossentropy"),
@@ -30,7 +31,7 @@ def tspRand(s):
     batch = random.choice([32,64])
 
     c = conf.conf("TSP-{}".format(random.randint(1,10000)),
-            updates=[("learningRate",lr),
+                  updates=[("learningRate",lr),
                     ("convID","base-"+str(dim)),("labelID", "base"),
                     ("imageDim",dim),("model","cnn"),
                     ("numEpochs",30),("batchsize",batch),

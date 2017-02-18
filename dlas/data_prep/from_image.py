@@ -37,8 +37,13 @@ class FromImage(ImagePrep):
         for i in local_inst:
             start = time.clock()
             img = Image.open(i)
+            #self.log.debug("Image nan: " + str(np.isnan(np.array(img)).any()))
             img = img.convert('L')
+            #self.log.debug("Image nan after convert: " + str(np.isnan(np.array(img)).any()))
             img = img.resize((self.image_dim, self.image_dim), Image.LANCZOS)
+            #self.log.debug("Image nan after resize: " + str(np.isnan(np.array(img)).any()))
+            if (np.isnan(np.array(img)).any()):
+                self.log.debug("NAN: {}".format(i))
             #img_path, ext = os.path.splitext(i)
             #if save: tmp.save(f+"_resized-"+str(imgDim)+".jpeg","JPEG")
             stop = time.clock()

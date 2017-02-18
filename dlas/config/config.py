@@ -29,6 +29,7 @@ def conf(scen, ID, updates = []):
     # Labels
     config["label-mode"] = "MultiLabelBase"
     config["label-norm"] = "TimesGood"
+    config["num-labels"] = "num-solvers"
 
     # Neural network configs:
     config["nn-model"] = "cnn"
@@ -56,7 +57,8 @@ def conf(scen, ID, updates = []):
 
 def update(config, updates = []):
     for k, v in updates:
-        log.debug(str(k)+" = "+str(v))
+        if not k in config:
+            log.warning(str(k)+" = "+str(v)+" is not a standard option.")
         config[k] = v
 
     if config["num-labels"] == "num-solvers" and "num-solvers" in config:

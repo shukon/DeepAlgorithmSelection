@@ -285,9 +285,9 @@ class Network:
         self.input_var, self.target_var = T.tensor4("inputs"), T.matrix("targets")
 
         # Build network
-        if   self.config["model"] == "cnn": network = self.build_cnn(self.input_var)
-        elif self.config["model"] == "mnn": network = self.build_mnn(self.input_var)
-        elif self.config["model"] == "cnn1D":
+        if   self.config["nn-model"] == "cnn": network = self.build_cnn(self.input_var)
+        elif self.config["nn-model"] == "mnn": network = self.build_mnn(self.input_var)
+        elif self.config["nn-model"] == "cnn1D":
             self.input_var = T.tensor3("inputs")
             network = self.build_cnn1D(self.input_var)
         else: raise ValueError("{} not a modelchoice!".format(self.config["model"]))
@@ -373,7 +373,7 @@ class Network:
 
         useValidation = self.config["useValidationSet"]
 
-        if self.config["model"] == "cnn1D":
+        if self.config["nn-model"] == "cnn1D":
             X = X.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
             X_val = X_val.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
             X_test = X_test.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
@@ -461,10 +461,10 @@ class Network:
             log.info(res)
 
         # Saving the network weights
-        if save:
-            path = self.config["modelPath"].format(scen, cv[0], cv[1], self.config["repetition"])
-            log.info("Save network in {}".format(path))
-            np.savez(path, *lasagne.layers.get_all_param_values(self.network))
+        #if save:
+        #    path = self.config["modelPath"].format(scen, cv[0], cv[1], self.config["repetition"])
+        #    log.info("Save network in {}".format(path))
+        #    np.savez(path, *lasagne.layers.get_all_param_values(self.network))
 
         return timesPerEpoch, timesToPredict, trainloss, valloss, testloss, trainpred, valpred, testpred, valAcc, testAcc
 

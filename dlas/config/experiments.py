@@ -13,12 +13,12 @@ def getConfig(s, e):
 
 def tsp(s, ID):
     c = conf.conf(s, ID, updates=[#("learningRate",0.01),
-                    ("image-id","FromImage"),("labelID", "MultiLabelBase"),
+                    ("image-mode","FromImage"),("label-mode", "MultiLabelBase"),
                     ("num-labels","num-solvers"),
-                    ("image-dim",100),("model","cnn"),
-                    ("numEpochs",30),("batchsize",64),
+                    ("image-dim",100),("nn-model","cnn"),
+                    ("nn-numEpochs",10),("nn-batchsize",64),
                     #("lossFunction","squared_error")
-                    ("lossFunction","binary_crossentropy"),
+                    ("nn-lossfunction","binary_crossentropy"),
                     #("lossFunction","categorical_crossentropy")
                     ])
     return c

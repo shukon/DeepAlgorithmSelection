@@ -7,6 +7,7 @@ from dlas.data_prep.text_to_image import TextToImage
 from dlas.data_prep.from_image import FromImage
 
 from dlas.data_prep.multi_label_base import MultiLabelBase
+from sklearn.preprocessing import StandardScaler
 
 
 class DataPreparer(object):
@@ -55,10 +56,19 @@ class DataPreparer(object):
         self.log.debug("img_dir: {}, label_dir: {}".format(self.img_dir,
             self.label_dir))
 
-    def normalize(self, data):
+    def norm(self, data):
+        scale = StandardScaler() #with_mean=0, with_std=1)
+        #reshaped_data = data.reshape(data.shape[0], -1)
+        #print(reshaped_data.scale)
+        #scale.fit(reshaped_data)
+        #reshaped_data = scale.transform(reshaped_data)
+        #return data.reshape(data.shape)
+        return scale.fit_transform(data)
+
+        ####
         mean = np.mean(data, axis=0)
         std = np.std(data, axis=0)
-        if std.any == 0:
+        if (std==0).any():
             self.log.warning("ALERT! std = 0")
         data = (data-mean)/std
         return data
@@ -94,10 +104,24 @@ class DataPreparer(object):
 
         image_data = np.reshape(image_data, (-1, 1, self.config["image-dim"],
                                              self.config["image-dim"]))
+        num_inst = image_data.shape[0]
+        image_data = np.reshape(image_data, (num_inst, -1))
+        print(image_data.shape)
         image_data = self.float32(image_data)
-        image_data = self.normalize(image_data)
-        image_data = np.nan_to_num(image_data)
-        assert(np.isnan(image_data).any, False)
+        print("Before norm:")
+        print(image_data)
+        image_data = self.norm(image_data)
+        print("After norm:")
+        print(image_data)
+        image_data = np.reshape(image_data, (-1, 1, self.config["image-dim"],
+                                             self.config["image-dim"]))
+        if ((image_data==0).all()):
+            self.log.error("Something went wrong with preprocessing(< -1)")
+        if np.isnan(image_data).any():
+            self.log.error("Something went wrong with preprocessing image-data")
+        #image_data = np.nan_to_num(image_data)
+        #assert np.isnan(image_data).any(), False
+        #print(image_data)
 
         self.log.debug("Saving image-data in {}".format(path))
         np.save(path, image_data)
@@ -115,7 +139,6 @@ class DataPreparer(object):
             if self.label_output, writes data into output_dir
         """
         path = os.path.join(self.label_dir, self.label_prep.id+".npy")
-        self.log.debug("Checking for label-data in {}".format(path))
         if (not recalculate and self.label_dir and os.path.isfile(path)):
             self.log.debug("Loading label-data from {}".format(path))
             return np.load(path)

@@ -65,17 +65,16 @@ def update(config, updates = []):
         config["num-labels"] == config["num-solvers"]
 
     # results/{scen}/{expID}/{repitition}/
-    config["resultPath"]      = "results/{}/{}/{}/"  # .format(scen,id,rep) (done in main)
+    config["resultPath"] = "results/{}/{}/{}/".format(config["scen"], config["ID"],
+                                       config["repetition"])
 
     save(config)
     return config
 
 def save(config):
-    path = config["resultPath"].format(config["scen"], config["ID"],
-                                       config["repetition"])
 
-    if not os.path.exists(path):
-        os.makedirs(path)
+    if not os.path.exists(config["resultPath"]):
+        os.makedirs(config["resultPath"])
 
-    with open(os.path.join(path, "config.pickle"), "wb") as handle:
+    with open(os.path.join(config["resultPath"], "config.p"), "wb") as handle:
         pickle.dump(config, handle)

@@ -11,6 +11,7 @@ from dlas.data_prep.data_prep import DataPreparer
 import dlas.config.config as conf
 import dlas.config.experiments as exp
 from dlas.aslib.aslib_handler import ASlibHandler
+from dlas.evaluation.evaluate import Evaluator
 
 
 log.basicConfig(level=log.DEBUG)
@@ -59,8 +60,7 @@ def run_experiment(scen, ID, config, skipIfResultExists = True):
     data = prep(scen, config, "instances/"+scen, recalculate = False)
     inst, X, y = data
 
-    scores = cross_validation(scen, ID, inst, X, y, config, resultPath, rep)
-    return(np.mean(scores))
+    cross_validation(scen, ID, inst, X, y, config, resultPath, rep)
 
 def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     """
@@ -171,9 +171,18 @@ if __name__ == "__main__":
     log.addLevelName( log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
     scen = sys.argv[2]
     ID = sys.argv[3]
+    eva = Evaluator()
     if sys.argv[1] == "exp":
-        c = exp.getConfig(scen, ID)
-        run_experiment(scen, ID, c, skipIfResultExists=False)
+        if scen == "all":
+            scenarios = ["TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
+        else:
+            scenarios = [scen]
+        for s in scenarios:
+            c = exp.getConfig(s, ID)
+            run_experiment(s, ID, c, skipIfResultExists=False)
+            print(eva.print_table(scen, ID))
+    elif sys.argv[1] == "eval":
+        print(eva.print_table(scen, ID))
     elif sys.argv[1] == "stat":
         # Print stats of scenario
         log.info("Scenario-statistics for {}:".format(scen))

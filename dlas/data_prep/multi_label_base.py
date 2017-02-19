@@ -13,7 +13,7 @@ class MultiLabelBase(LabelPrep):
         """
         super(MultiLabelBase, self).__init__(config, aslib)
         self.label_norm = config["label-norm"]
-        self.id = "-".join([self.label_mode, self.label_norm])
+        self.id = "-".join([config["scen"],self.label_mode, self.label_norm])
 
     def get_label_data(self, inst):
         """

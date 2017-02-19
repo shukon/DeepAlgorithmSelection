@@ -254,7 +254,7 @@ class ASlibHandler:
     def evaluate(self, scen, inst, solver_index, mode="par10",
                  ignore_unsolved = True):
         """
-        Returns Penalized Average Runtime (PAR) for given instances.
+        Evaluates score depending on mode.
 
         ATTENTION: if mode is misclassified, solver_index is a list of lists
         with direct output of neural network.
@@ -281,7 +281,8 @@ class ASlibHandler:
             elif mode == "misclassified":
                 # We have the whole range of solver predictions. <0.5 => 0; >0.5 => 1
                 rounded_solvers = np.around(s)
-                scores.append(sum([int(a!=b) for a, b in zip(self.get_labels(scen,i,label="status"),roundedSolvers)]))
+                scores.append(sum([int(a!=b) for a, b in
+                    zip(self.get_labels(scen,i,label="status"),rounded_solvers)]))
             else: raise ValueError("{} is not regonized as a parameter for evaluation.".format(mode))
         if len(inst)-notEvaluated > 0: return np.mean(scores), np.std(scores)
         else: raise Exception("Something is terribly wrong.")

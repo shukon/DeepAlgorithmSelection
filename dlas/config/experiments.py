@@ -4,7 +4,7 @@ import random
 import dlas.config.config as conf
 
 def getConfig(s, e):
-    if e == "test":
+    if e == "tsp-default":
         return tsp(s, e)
     elif e == "random":
         return tspRand(s)
@@ -16,7 +16,7 @@ def tsp(s, ID):
                     ("image-mode","FromImage"),("label-mode", "MultiLabelBase"),
                     ("num-labels","num-solvers"),
                     ("image-dim",100),("nn-model","cnn"),
-                    ("nn-numEpochs",10),("nn-batchsize",64),
+                    ("nn-numEpochs",30),("nn-batchsize",64),
                     #("lossFunction","squared_error")
                     ("nn-lossfunction","binary_crossentropy"),
                     #("lossFunction","categorical_crossentropy")

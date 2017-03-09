@@ -1,3 +1,6 @@
+""" Main execution script for DLAS.
+Here the basic experiment functions are defined and the interaction between user
+and module happens. """
 from __future__ import print_function
 
 import os
@@ -13,7 +16,6 @@ import dlas.config.experiments as exp
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.evaluation.evaluate import Evaluator
 
-
 log.basicConfig(level=log.DEBUG)
 
 aslib = ASlibHandler()
@@ -22,14 +24,29 @@ with open("aslib_loaded.pickle", "rb") as f:
 
 def prep(scen, config, instance_path, recalculate = False):
     """
-    Responsible for preparing data, that is:
+    Responsible for preparing data for experiment, that is:
       - Generating the data (images and labels) according to specifics in config-file
       - Image conversion done by Converter-Class
       - Labels calculated using ASlib-data
-      - Image = X, label = y, format in (#inst,#channels,dim1,dim2)
+      - Image = X, label = y, image-format in (#inst,#channels,dim1,dim2)
+
+    Args:
+        scen : string
+            -- specifies scenario
+        config : dict
+            -- options for this experiment
+        instance_path : string
+            -- path to local instances
+        recalculate : bool
+            -- if True, recalculate  image and labels
+
+    Returns:
+        inst : list of instances
+        X    : image-data, format in (#inst,#channels,dim1,dim2)
+        y    : label-data
     """
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:
-    inst = aslib.get_instances(scen, False)
+    inst = aslib.get_instances(scen, remove_unsolved=False)
     preparer = DataPreparer(config, aslib, instance_path, "images/", "labels/")
 
     local_inst = [aslib.local_path(scen, i) for i in inst]
@@ -38,7 +55,7 @@ def prep(scen, config, instance_path, recalculate = False):
 
     return inst, X, y
 
-def run_experiment(scen, ID, config, skipIfResultExists = True):
+def run_experiment(scen, ID, config, skip_if_result_exists = True):
     """
     Run experiment (that is defined by name through scen and ID), which is
     further defined in config.
@@ -46,12 +63,14 @@ def run_experiment(scen, ID, config, skipIfResultExists = True):
     log.basicConfig(level = log.DEBUG)
     config = conf.update(config, updates = [("scen",scen),("num-solvers",
                 len(aslib.get_solvers(scen)))])
+    for o in config: log.debug(str(o) + " : " + str(config[o]))
 
     rep = config["repetition"]
-    resultPath = config["resultPath"].format(scen, ID, rep)
-    if skipIfResultExists and os.path.exists(resultPath):
-        log.info("Skipping experiment for scen {} with ID {} in repetition {}, because it seems that it has already been performed.".format(scen,
-            ID, rep))
+    result_path = config["resultPath"]
+    if skip_if_result_exists and os.path.exists(result_path):
+        log.info("Skipping experiment for scen {} with ID {} in repetition {}, "
+                 "because it seems that it has already been performed.".format(
+                     scen, ID, rep))
         return
     if not os.path.exists(resultPath):
         os.makedirs(resultPath)
@@ -65,7 +84,7 @@ def run_experiment(scen, ID, config, skipIfResultExists = True):
 def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     """
     Performs a 10-fold crossvalidation for a given scenario and configuration
-    on a bunch of instances. The results are then saved in a result-file.
+    on a bunch of instances. The results are then saved in multiple result-files.
 
     Args:
         scen -- string, name of scenario
@@ -74,7 +93,6 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
         X -- imagedata
         y -- labeldata
         config -- config-dict
-        output_dir -- string, path to output-directory
         rep -- int, repetition-number
     """
     folds, valFolds = [], []  # Save test/val instances per fold as list: [[f1-i1, f1-i2, ...], [f2-i1, f2-i2, ...], ...]
@@ -94,8 +112,10 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     for a in folds:
         for b in folds:
             if a == b: continue
-            if not (set(a).isdisjoint(b)): raise ValueError
-            if not len(a) == len(b): log.warning("Folds not equal size! {} vs {}".format(len(a), len(b)))
+            if not (set(a).isdisjoint(b)):
+                raise ValueError("Crossvalidation-folds are not disjoint.")
+            if not len(a) == len(b):
+                log.warning("Folds not equal size! {} vs {}".format(len(a), len(b)))
 
     for test_fold in folds:
         # We use the fold following the current testfold for validation (test 1 -> val 2, ... test 10 -> val 1)
@@ -169,6 +189,7 @@ if __name__ == "__main__":
     log.basicConfig(level = log.DEBUG)
     log.addLevelName( log.WARNING, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.WARNING))  # Color warnings
     log.addLevelName( log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
+
     scen = sys.argv[2]
     ID = sys.argv[3]
     eva = Evaluator()
@@ -179,14 +200,16 @@ if __name__ == "__main__":
             scenarios = [scen]
         for s in scenarios:
             c = exp.getConfig(s, ID)
-            run_experiment(s, ID, c, skipIfResultExists=False)
-            print(eva.print_table(scen, ID))
+            run_experiment(s, ID, c, skip_if_result_exists=False)
+            print(eva.print_table(s, ID))
     elif sys.argv[1] == "eval":
         print(eva.print_table(scen, ID))
+        eva.plot(scen, ID)
     elif sys.argv[1] == "stat":
         # Print stats of scenario
         log.info("Scenario-statistics for {}:".format(scen))
         log.info("{} instances, {} solvable.".format(
-            len(aslib.get_instances(scen, removeUnsolved=False)),
-            len(aslib.get_instances(scen, removeUnsolved=True))))
-        #log.info("Solver-Dist.: {}".format(aslib.indiSolvers(scen)))
+            len(aslib.get_instances(scen, remove_unsolved=False)),
+            len(aslib.get_instances(scen, remove_unsolved=True))))
+        for solver in aslib.solver_distribution(scen):
+            log.info("Solver-Dist.: {}".format(solver))

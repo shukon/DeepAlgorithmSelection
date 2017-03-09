@@ -237,6 +237,10 @@ class ASlibHandler(object):
         """ Returns the matched local (physical) path of the instance. """
         return self.data[scen][inst][0]
 
+    def local_paths(self, scen, insts):
+        """ Returns the matched local (physical) paths of the instances. """
+        return [self.local_path for inst in insts]
+
     def get_labels(self, scen, inst, label = "status"):
         """ Iterate over all solvers (lexico) and return list [0,1,1,0,1]
             indicating whether the solver solved the instance.

@@ -306,6 +306,7 @@ class ASlibHandler(object):
     #        endings = [self.data[s][i][0].split(".")[-1] for i in self.data[s]]
     #        log.debug("Endings for {}: {}".format(s, Counter(endings)))
 
+    ## Scenario scoring/statistics functions
     def evaluate(self, scen, insts, solver_index, mode="par10",
                  ignore_unsolved = True):
         """
@@ -342,7 +343,6 @@ class ASlibHandler(object):
             else: raise ValueError("{} is not regonized as a parameter for evaluation.".format(mode))
         if len(insts) > notEvaluated: return np.mean(scores), np.std(scores)
         else: raise Exception("No instances evaluated. Something terribly wrong.")
-
 
     def BSS(self, scen, inst = None, mode = "par10"):
         """ Returns index for bss, respectively. """

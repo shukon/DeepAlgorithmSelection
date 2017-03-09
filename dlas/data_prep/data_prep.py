@@ -2,12 +2,13 @@ import os
 import logging as log
 
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 from dlas.data_prep.text_to_image import TextToImage
 from dlas.data_prep.from_image import FromImage
 
 from dlas.data_prep.multi_label_base import MultiLabelBase
-from sklearn.preprocessing import StandardScaler
+from dlas.data_prep.tsp_label_class import TSPLabelClass
 
 
 class DataPreparer(object):
@@ -24,7 +25,7 @@ class DataPreparer(object):
         label_dir -- where to put labeldata
     """
 
-    def __init__(self, config, aslib, instance_path=None, img_dir=None, label_dir=None):
+    def __init__(self, config, aslib, instance_path, img_dir=None, label_dir=None):
         self.log = log.getLogger('DataPreparer')
 
         self.config = config
@@ -36,20 +37,8 @@ class DataPreparer(object):
         self._set_image_prep(image_mode)
         self._set_label_prep(label_mode)
 
-        if instance_path:
-            self.inst_path = instance_path
-        else:
-            # Define instance dir (relative/root...), so you can have instances in a remote place
-            #if os.getcwd().startswith("/home/marbenj"):
-            #    #instDir = "/data/aad/benchmarks/"
-            #    instDir = "/home/marbenj/instances/TSP/"
-            #elif os.getcwd().startswith("/home/shuki"):
-            #    #instDir = "/data/aad/benchmarks/"
-            #    instDir = "/home/marbenj/ishukis/TSP/DLTSP/"
-            #else:
-            #    self.log.warning("Somethings wrong")
-            #    instDir = os.path.join(os.getcwd(), "instances/")
-            raise ValueError("No instance path specified!")
+        self.inst_path = instance_path
+
         self.img_dir = img_dir
         self.label_dir = label_dir
         #TODO
@@ -64,14 +53,6 @@ class DataPreparer(object):
         #reshaped_data = scale.transform(reshaped_data)
         #return data.reshape(data.shape)
         return scale.fit_transform(data)
-
-        ####
-        mean = np.mean(data, axis=0)
-        std = np.std(data, axis=0)
-        if (std==0).any():
-            self.log.warning("ALERT! std = 0")
-        data = (data-mean)/std
-        return data
 
     def float32(self, k):  # Necessary for theano-intern reasons
         return np.cast['float32'](k)
@@ -106,24 +87,18 @@ class DataPreparer(object):
                                              self.config["image-dim"]))
         num_inst = image_data.shape[0]
         image_data = np.reshape(image_data, (num_inst, -1))
-        print(image_data.shape)
         image_data = self.float32(image_data)
-        print("Before norm:")
-        print(image_data)
         image_data = self.norm(image_data)
-        print("After norm:")
-        print(image_data)
         image_data = np.reshape(image_data, (-1, 1, self.config["image-dim"],
                                              self.config["image-dim"]))
-        if ((image_data==0).all()):
-            self.log.error("Something went wrong with preprocessing(< -1)")
-        if np.isnan(image_data).any():
-            self.log.error("Something went wrong with preprocessing image-data")
-        #image_data = np.nan_to_num(image_data)
-        #assert np.isnan(image_data).any(), False
-        #print(image_data)
 
-        self.log.debug("Saving image-data in {}".format(path))
+        if np.isnan(image_data).any():
+            self.log.error("Something went wrong with preprocessing (NAN)")
+            #image_data = np.nan_to_num(image_data)
+        if ((image_data == 0).all()):
+            self.log.error("Something went wrong with preprocessing (all equal 0)")
+
+        self.log.debug("Saving image-data in {}.".format(path))
         np.save(path, image_data)
         return image_data
 
@@ -164,5 +139,7 @@ class DataPreparer(object):
     def _set_label_prep(self, label_mode):
         if label_mode == "MultiLabelBase":
             self.label_prep = MultiLabelBase(self.config, self.aslib)
+        elif label_mode == "TSPLabelClass":
+            self.label_prep = TSPLabelClass(self.config, self.aslib)
         else:
             raise Exception(label_mode + " not implemented.")

@@ -72,8 +72,8 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
                  "because it seems that it has already been performed.".format(
                      scen, ID, rep))
         return
-    if not os.path.exists(resultPath):
-        os.makedirs(resultPath)
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
 
     # We assume ASlibHandler is matching from execdir
     data = prep(scen, config, "instances/"+scen, recalculate = False)
@@ -213,3 +213,7 @@ if __name__ == "__main__":
             len(aslib.get_instances(scen, remove_unsolved=True))))
         for solver in aslib.solver_distribution(scen):
             log.info("Solver-Dist.: {}".format(solver))
+    elif sys.argv[1] == "prep":
+        # Prepare image and label
+        c = exp.getConfig(scen, ID)
+        prep(scen, c, "instances/"+scen, recalculate = True)

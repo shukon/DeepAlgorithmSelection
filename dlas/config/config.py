@@ -7,7 +7,7 @@ import logging as log
 
 
 def conf(scen, ID, updates = []):
-    """ This function creates a configuration with basic parameters, which will
+    """ This function creates a configuration with default parameters, which will
     (at the end of the function) be overwritten with the values in the updates-
     dictionary. """
     config = {}
@@ -33,6 +33,8 @@ def conf(scen, ID, updates = []):
 
     # Neural network configs:
     config["nn-model"] = "cnn"
+    config["nn-conv-size-one"] = 3,
+    config["nn-conv-size-two"] = 2
     config["nn-numEpochs"] = 100
     config["nn-batchsize"] = 128
     config["nn-update-method"] = "nesterov"
@@ -41,15 +43,14 @@ def conf(scen, ID, updates = []):
     config["nn-learningrate-stop"] = 0.3
     config["nn-momentum-start"] = 0.9
     config["nn-momentum-stop"] = 0.9
+    config["nn-regression"] = True
+    config["nn-output-nonlinearity"] = "sigmoid"
     """
     config["epsilon"] = 1e-08
     config["rho"] = 0.95
     config["beta1"], config["beta2"] = 0.9, 0.999
     """
-
-
     config["useValidationSet"] = True
-    config["useCVforValidation"] = False  # TODO ??
 
     # DO NOT CHANGE VALUES BELOW MANUALLY EXCEPT YOU KNOW WHAT YOU ARE DOING
     config = update(config, updates)
@@ -61,8 +62,11 @@ def update(config, updates = []):
             log.warning(str(k)+" = "+str(v)+" is not a standard option.")
         config[k] = v
 
+    # If the number of labels is equal the number of solvers, it suffices to
+    # set num-labels to "num-solvers"
     if config["num-labels"] == "num-solvers" and "num-solvers" in config:
-        config["num-labels"] == config["num-solvers"]
+        log.debug("Setting number of labels to number of solvers")
+        config["num-labels"] = config["num-solvers"]
 
     # results/{scen}/{expID}/{repitition}/
     config["resultPath"] = "results/{}/{}/{}/".format(config["scen"], config["ID"],

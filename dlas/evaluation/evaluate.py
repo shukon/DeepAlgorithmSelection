@@ -13,6 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from operator import itemgetter
 
 from dlas.aslib.aslib_handler import ASlibHandler
+from dlas.data_prep.tsp_label_class import TSPLabelClass
 
 class Evaluator:
     """ Evaluates experiments that have been performed and produces some nice
@@ -26,6 +27,12 @@ class Evaluator:
 
         self.aslib = ASlibHandler()
         with open("aslib_loaded.pickle", "rb") as f: self.aslib.data = pickle.load(f)
+
+    def compare_ids_for_scen(self, scen):
+        """ Prints information available for scenario and states different
+        experiments performed on it. """
+        path = "results/{}/".format(scen)
+        avail_IDs = next(os.walk(path))[1]
 
     def print_table(self, scen, ID):
         """ Returns a string which contains a table with the following
@@ -45,6 +52,8 @@ class Evaluator:
         Returns:
             list with values as documented in doc-string 
         """
+        if ID in ["tsp-inst-name", "tsp-inst-name-cnn"]:
+            print(self.inst_name_eval(scen, ID))
         par10_per_epoch = self._get_par10_per_epoch(scen, ID)
         par10 = (min(par10_per_epoch), par10_per_epoch.index(min(par10_per_epoch)))
         percent_solved_per_epoch = self._get_percent_solved_per_epoch(scen, ID)
@@ -53,9 +62,32 @@ class Evaluator:
         misclassified_per_epoch = self._get_misclassified_per_epoch(scen, ID)
         misclassified = (min(misclassified_per_epoch), misclassified_per_epoch.index(min(misclassified_per_epoch)))
 
-        return [scen, ID, round(par10[0][0],2), par10[1],
-                round(percent_solved[0][0],4), percent_solved[1],
-                round(misclassified[0][0], 2), misclassified[1]]
+        return [scen, ID, (round(par10[0][0],2), par10[1]),
+                (round(percent_solved[0][0],4), percent_solved[1]),
+                (round(misclassified[0][0], 2), misclassified[1])]
+
+    def inst_name_eval(self, scen, ID):
+        """ Evaluation of labeling the instances per generator. """
+        config = pickle.load(open(self.basePath.format(scen,ID)+"0/config.p"))
+        labeler = TSPLabelClass(config, self.aslib)
+        percent = []
+        for epoch in range(self._get_num_epo(scen, ID)):
+            pred = self.get_pred(scen, ID, rep=0, epoch=epoch)
+            val, test = pred
+            inst, pred = val
+            #print(pred)
+            pred = [np.argmax(p) for p in pred]
+            labels = [np.argmax(l) for l in
+                      labeler.get_label_data(inst).reshape(len(inst),-1)]
+            index_misclass = [x[0] for x in list(enumerate(zip(pred, labels))) if
+                    x[1][0] != x[1][1]]
+            percent.append(1-(len(index_misclass)/float(len(inst))))
+            print(len(inst),len(labels))
+            if percent[-1] == max(percent):
+                print([x[1] for x in list(enumerate(zip(inst,labels,pred))) if x[0] in index_misclass])
+                print(list(enumerate(zip(pred, labels))))
+        print("Correctly classified: " + str(max(percent)) + " in epoch " +
+                str(np.argmax(percent)))
 
     def _get_num_epo(self, scen, ID):
         """Returns number of epochs"""
@@ -101,7 +133,7 @@ class Evaluator:
                 (instance_names, prediction_array)
                 e.g.: ("inst0021", [0.92, 0.34, 0.5])
         """
-        resultPath = os.path.join(self.basePath.format(scen,ID), rep) + "/"
+        resultPath = os.path.join(self.basePath.format(scen, ID), str(rep)) + "/"
         trainPred =  [a for b in [fold[epoch] for fold in np.load(resultPath+"trainPred.npz")["trainPred"]] for a in b]
         valPred =  [a for b in [fold[epoch] for fold in np.load(resultPath+"valPred.npz")["valPred"]] for a in b]
         testPred = [a for b in [fold[epoch] for fold in np.load(resultPath+"testPred.npz")["testPred"]] for a in b]
@@ -157,29 +189,27 @@ class Evaluator:
             testLoss.append(np.load(resultPath +rep+"/"+"testLoss.npz")["testLoss"])
         return np.mean(trainLoss, axis=0), np.mean(valLoss, axis=0), np.mean(testLoss, axis=0)
 
-    def printLine(scen, ID, options=["VBS","net","BSS","rand","SOA"]):
-        line = scen + " " + ID
+    def print_scen_info(self, scen, options=["VBS","BSS","rand","SOA"]):
+        line = [scen]
         for o in options:
-            line += " "
-            if o == "VBS":    line += str(getVBS(scen)[0])
-            elif o == "BSS":  line += str(getBSS(scen)[0])
-            elif o == "rand": line += str(getRandom(scen)[0][0]) + " " + str(getRandom(scen)[1][0])
-            elif o == "SOA":  line += str(getSOA(scen))
-            elif o == "net":  line += str(min(scoresPerEpoch(scen, ID)[0]))
+            if o == "VBS":    line.append(self.aslib.getVBS(scen)[0])
+            elif o == "BSS":  line.append(self.aslib.getBSS(scen)[0])
+            elif o == "rand": line.append(self.aslib.getRandom(scen)[0])
+            elif o == "SOA":  line.append(self.aslib.getSOA(scen))
             else: raise Exception("{} is not an option.".format(o))
-        return line
-    
-    def plot(scen, ID, train=True, val=True, test=False):
+        return options, line
+ 
+    def plot(self, scen, ID, train=True, val=True, test=False, output_dir = "."):
         """
         Plot train-/valLoss vs PAR10 over epochs.
         """
         # Get data
-        trainLoss   = getLoss(scen, ID)[0]
+        trainLoss   = self.getLoss(scen, ID)[0]
         trainLossMean, trainLossStd   = np.mean(trainLoss, axis=0), np.std(trainLoss, axis=0)
-        valLoss   = getLoss(scen, ID)[1]
+        valLoss   = self.getLoss(scen, ID)[1]
         valLossMean, valLossStd   = np.mean(valLoss, axis=0), np.std(valLoss, axis=0)
-        valPAR10mean, valPAR10std = scoresPerEpoch(scen, ID, mode="val")  # per epoch
-    
+        valPAR10mean, valPAR10std = zip(*self._get_par10_per_epoch(scen, ID))  # per epoch
+
         # Plot
         fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
         numEpochs = range(len(valLossMean))
@@ -204,8 +234,10 @@ class Evaluator:
         ax21.plot(numEpochs, valPAR10mean, 'r')
         ax21.set_ylabel('PAR10', color='r')
         fig.tight_layout()
-        plt.show()
-        return
+        #plt.show()
+        with PdfPages(os.path.join(output_dir, scen+"_"+ID+"_plot.pdf")) as pdf:
+            pdf.savefig()
+        return plt
 
     def permutationTest(self, *args):
         if len(args)==2 and len(args[0]) > 0 and len(args[1]) > 0: data1, data2 = args
@@ -234,4 +266,4 @@ if __name__ == "__main__":
     ID = "test"
     eva = Evaluator()
     print(eva.print_table(scen, ID))
-    #plot(scen, ID)
+    eva.plot(scen, ID)

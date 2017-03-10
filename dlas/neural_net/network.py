@@ -25,6 +25,7 @@ import warnings
 import theano
 import theano.tensor as T
 import lasagne
+from PIL import Image
 
 from dlas.aslib.aslib_handler import ASlibHandler
 
@@ -44,6 +45,7 @@ class AdjustVariable(object):
         #... and choose new values according to current epoch.
         epoch = train_history[-1]['epoch']
         new_value = float32(self.ls[epoch - 1])
+        print(nn, self.name, new_value)
         getattr(nn, self.name).set_value(new_value)
 
 def float32(k):
@@ -83,12 +85,11 @@ class Network:
 
     def build_mnn(self, input_var=None):
         """ Builds a multilayer-neural-network without convolution. """
+        learningRate = self.config["nn-learningrate-start"]
+        dim = self.config["image-dim"]
 
-        learningRate = self.config["learningRate"]
-        dim = self.config["imageDim"]
-        out = self.config["numSolvers"]
-        hiddenLayers = int(config["mnnLayer"])
-        hiddenNodes = int((((dim*dim)+out)/2)/hiddenLayers)
+        hiddenLayers = int(self.config["nn-mnn-layer"])
+        hiddenNodes = int((((dim*dim)+self.config["num-labels"])/2)/hiddenLayers)
 
         # Input layer, as usual:
         network = lasagne.layers.InputLayer(shape=(None, 1, dim, dim),
@@ -101,14 +102,13 @@ class Network:
                 network, num_units=hiddenNodes,
                 nonlinearity=lasagne.nonlinearities.rectify)
 
+        # Set regresssion to true for multi-label-classification
+        network.regression=False
+
         # And, finally, the 10-unit output layer with 50% dropout on its inputs:
         network = lasagne.layers.DenseLayer(
-                network, num_units=out,
-                nonlinearity=lasagne.nonlinearities.sigmoid)
-                #nonlinearity=lasagne.nonlinearities.softmax)
-
-        # Set regresssion to true for multi-label-classification
-        network.regression=True
+                network, num_units=self.config["num-labels"],
+                nonlinearity=lasagne.nonlinearities.softmax)
 
         return network
 
@@ -191,16 +191,16 @@ class Network:
         # Fully connected, 200 nodes
         # Output layer, N solvers
 
-        # Note: at the moment all nodes are reduced by half
-
         # Input layer, as usual:
         dim = self.config["image-dim"]
         network = lasagne.layers.InputLayer(shape=(None, 1, dim, dim),
                                             input_var=input_var)
 
+        conv1 = self.config["nn-conv-size-one"]
+        conv2 = self.config["nn-conv-size-two"]
         # Convolutional layer with 32 kernels of size 3x3.
         network = lasagne.layers.Conv2DLayer(
-                network, num_filters=32, filter_size=(3, 3),
+                network, num_filters=32, filter_size=(conv1, conv1),
                 nonlinearity=lasagne.nonlinearities.rectify,
                 W=lasagne.init.GlorotUniform())
         network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -208,7 +208,7 @@ class Network:
 
         # Convolutional layer with 64 kernels of size 2x2.
         network = lasagne.layers.Conv2DLayer(
-                network, num_filters=64, filter_size=(2, 2),
+                network, num_filters=64, filter_size=(conv2, conv2),
                 nonlinearity=lasagne.nonlinearities.rectify,
                 W=lasagne.init.GlorotUniform())
         network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -216,7 +216,7 @@ class Network:
 
         # Convolutional layer with 128 kernels of size 2x2.
         network = lasagne.layers.Conv2DLayer(
-                network, num_filters=128, filter_size=(2, 2),
+                network, num_filters=128, filter_size=(conv2, conv2),
                 nonlinearity=lasagne.nonlinearities.rectify,
                 W=lasagne.init.GlorotUniform())
         network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
@@ -232,13 +232,18 @@ class Network:
                 nonlinearity=lasagne.nonlinearities.rectify)
 
         # And, finally, the 10-unit output layer with 50% dropout on its inputs:
+        if self.config["nn-output-nonlinearity"] == "sigmoid":
+            conf_nonlinearity=lasagne.nonlinearities.sigmoid
+        elif self.config["nn-output-nonlinearity"] == "softmax":
+            conf_nonlinearity=lasagne.nonlinearities.softmax
+        else: raise ValueError()
+
         network = lasagne.layers.DenseLayer(
-                network, num_units=self.config["num-solvers"],
-                nonlinearity=lasagne.nonlinearities.sigmoid)
-                #nonlinearity=lasagne.nonlinearities.softmax)
+                network, num_units=self.config["num-labels"],
+                nonlinearity = conf_nonlinearity)
 
         # Set regresssion to true for multi-label-classification
-        network.regression=True
+        network.regression = self.config["nn-regression"]
 
         network.update_learning_rate=theano.shared(float32(self.config["nn-learningrate-start"]))
         network.update_momentum=theano.shared(float32(self.config["nn-momentum-start"]))
@@ -293,7 +298,7 @@ class Network:
         else: raise ValueError("{} not a modelchoice!".format(self.config["model"]))
 
         # We adjust learning rate and momentum:
-        if not self.config["nn-update-method"] == "adam":
+        if not self.config["nn-update-method"] in ["adam", "adagrad"]:
             network.on_epoch_finished=[
               AdjustVariable('update_learning_rate',
                                 start=self.config["nn-learningrate-start"],
@@ -323,6 +328,8 @@ class Network:
         # No matter what, normalize!
         self.loss = self.loss.mean()
         self.test_loss = self.test_loss.mean()
+        #l2_penalty = regularize_layer_params_weighted(layers, l2)
+
         # We could add some weight decay as well here, see lasagne.regularization.
         # As a bonus, also create an expression for the classification accuracy:
         self.test_acc = T.mean(T.eq(self.test_prediction, self.target_var), dtype=theano.config.floatX)
@@ -335,6 +342,7 @@ class Network:
         if update_meth == "sgd": self.updates = lasagne.updates.sgd(self.loss, self.params, learningRate)
         elif update_meth == "momentum": self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learningRate, momentum=0.9)
         elif update_meth == "nesterov": self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learningRate, momentum=0.9)
+        elif update_meth == "adagrad"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
         elif update_meth == "adam"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
         else: raise ValueError("{} not a legal option for update-method in neural network.".format(update_meth))
         #updates = lasagne.updates.adam(loss, params)
@@ -386,7 +394,8 @@ class Network:
         for epoch in range(numEpochs):
             # Output format
             if epoch%25==0:
-                print("Epoch"+8*" "+"Time"+5*" "+"Training Loss  " + "Validation Loss  " + "Validation Accuracy")
+                print("Epoch"+8*" "+"Time"+5*" "+"Training Loss  "+"Validation"
+                      " Loss  " + "Validation Accuracy" + "Learningrate" + "Momentum")
             # Measure time per epoch
             start_time = time.time()
             # In each epoch, we do a full pass over the training data:
@@ -447,12 +456,20 @@ class Network:
                 log.info("Not training, error is nan.")
                 #return False
 
+            # Calc PAR10
+            #if self.aslib:
+            #    par10 = aslib.evaluate(self.config["scen"],inst[2],[np.argmax(x) for x in valpred[-1]])
+
+            #for x in self.network.__dict__:
+            #    print(str(x)+" "+repr(getattr(self.network, x)))
             # Then we print the results for this epoch:
             res = "{:03d} of {}".format(epoch+1, numEpochs)
             res += (13 - len(res))*" "
             res += "{:.5}s".format(timesPerEpoch[-1])
             res += (22 - len(res))*" "
             res += "{:.12}".format(train_err)
+            #res += "{}".format(self.network.update_learning_rate)
+            #res += "{:.12}".format(self.network.update_momentum)
             if useValidation:
                 res += (36 - len(res))*" "
                 res += " {:.12}".format(val_err)
@@ -465,6 +482,18 @@ class Network:
         #    path = self.config["modelPath"].format(scen, cv[0], cv[1], self.config["repetition"])
         #    log.info("Save network in {}".format(path))
         #    np.savez(path, *lasagne.layers.get_all_param_values(self.network))
+
+        # VISUALIZE
+        scen = self.config["scen"]
+        #for instance in zip(inst[1], X_val):
+        #    for solver in self.aslib.get_solvers(scen):
+        #        # Save hotmap
+        #        hotmap = lasagne.visualize.occlusion_heatmap(self, instance[1])
+        #        im = Image.fromarray(hotmap)
+        #        im.save(self.aslib.local_path(scen,
+        #            instance[0])+("-".join([solver,"hotmap.jpg"])))
+
+
 
         return timesPerEpoch, timesToPredict, trainloss, valloss, testloss, trainpred, valpred, testpred, valAcc, testAcc
 

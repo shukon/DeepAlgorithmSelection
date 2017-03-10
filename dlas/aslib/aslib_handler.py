@@ -30,7 +30,8 @@ class ASlibHandler(object):
     data = {}    # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
     instances = {}
     times = {}
-    scen_info = {"ASP-POTASSCO" : {"d":"ASP", "cutoffTime":600  ,"state_of_art": 115.5,  "bss": 534.1,   "vbs": 21.3},
+    scen_info = {"TestScen"    : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": 43,     "bss":10,       "vbs": 5},
+                "ASP-POTASSCO" : {"d":"ASP", "cutoffTime":600  ,"state_of_art": 115.5,  "bss": 534.1,   "vbs": 21.3},
                 "CSP-2010"     : {"d":"CSP", "cutoffTime":5000 ,"state_of_art": 247.7,  "bss": 1087.4,  "vbs": 107.7},
                 "CSP-MZN-2013" : {"d":"CSP", "cutoffTime":1800 ,"state_of_art": None,   "bss": None,    "vbs": None},
                 "QBF-2011"     : {"d":"QBF", "cutoffTime":3600 ,"state_of_art": 910.0,  "bss": 9172.3,  "vbs": 95.9},
@@ -219,7 +220,6 @@ class ASlibHandler(object):
         for s in range(len(self.get_solvers(scen))):
             timeouts = (round(1-self.evaluate(scen,inst,[s for x in
                 inst],"percent_solved")[0], 2))
-            #timeouts = 1800- self.evaluate(scen,inst,[s for x in inst],"percentSolved")
             lines.append("Solver {}: {} PAR10 with {} unsuccessful runs.".format(s,
                 self.evaluate(scen,inst,[s for x in inst],"par10"),timeouts))
         return lines
@@ -239,7 +239,7 @@ class ASlibHandler(object):
 
     def local_paths(self, scen, insts):
         """ Returns the matched local (physical) paths of the instances. """
-        return [self.local_path for inst in insts]
+        return [self.local_path(scen, inst) for inst in insts]
 
     def get_labels(self, scen, inst, label = "status"):
         """ Iterate over all solvers (lexico) and return list [0,1,1,0,1]
@@ -391,7 +391,7 @@ class ASlibHandler(object):
 
 if __name__ == "__main__":
     log.basicConfig(level = log.DEBUG)
-    scens = ["TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
+    scens = ["TestScen", "TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
     #with open("aslib_loaded.pickle", "rb") as f: a.data = pickle.load(f)
     aslib = ASlibHandler()
     for s in scens:

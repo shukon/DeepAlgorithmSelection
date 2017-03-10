@@ -12,7 +12,6 @@ class TextToImage(ImagePrep):
     """
     Implements image conversion from text-file to image-file.
     """
-    # TODO: implement options
     def __init__(self, image_dim=128, resize_method="LANCZOS", unpack=True,
                  round_method="closest"):
         super(TextToImage, self).__init__()
@@ -88,9 +87,7 @@ class TextToImage(ImagePrep):
         elif self.round_method == "closest": edge = round(math.sqrt(len(inst)))
         else: raise ValueError("{} is not a valid option for rounding-method."
                                "Use \"ceil\", \"floor\" or \"closest\".")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            inst = np.resize(inst, (edge, edge))
+        inst = np.resize(inst, (edge, edge))
 
         # Turn into greyscale-image
         image = Image.fromarray(inst.astype('uint8')).convert('L')

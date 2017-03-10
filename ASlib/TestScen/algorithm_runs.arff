@@ -1,0 +1,59 @@
+@RELATION ALGORITHM_RUNS_TestScenario
+
+@ATTRIBUTE instance_id STRING
+@ATTRIBUTE repetition NUMERIC
+@ATTRIBUTE algorithm STRING
+@ATTRIBUTE runtime NUMERIC
+@ATTRIBUTE runstatus {ok, timeout, memout, not_applicable, crash, other}
+
+@DATA
+test1, 1, eax, 4.370, ok
+test1, 1, eax.restart, 4.455, ok
+test1, 1, lkh, 10.295, ok
+test1, 1, lkh.restart, 7.285, ok
+test1, 1, maos, 9.010, ok
+test2, 1, eax, 4.385, ok
+test2, 1, eax.restart, 4.310, ok
+test2, 1, lkh, 11.580, ok
+test2, 1, lkh.restart, 8.170, ok
+test2, 1, maos, 3600.000, timeout
+test3, 1, eax, 4.345, ok
+test3, 1, eax.restart, 4.290, ok
+test3, 1, lkh, 3600.000, timeout
+test3, 1, lkh.restart, 329.885, ok
+test3, 1, maos, 9.970, ok
+test4, 1, eax, 4.090, ok
+test4, 1, eax.restart, 4.225, ok
+test4, 1, lkh, 1.505, ok
+test4, 1, lkh.restart, 1.935, ok
+test4, 1, maos, 3600.000, timeout
+test5, 1, eax, 4.685, ok
+test5, 1, eax.restart, 4.560, ok
+test5, 1, lkh, 16.960, ok
+test5, 1, lkh.restart, 25.050, ok
+test5, 1, maos, 10.075, ok
+test6, 1, eax, 4.685, ok
+test6, 1, eax.restart, 4.700, ok
+test6, 1, lkh, 30.440, ok
+test6, 1, lkh.restart, 14.740, ok
+test6, 1, maos, 9.885, ok
+test7, 1, eax, 4.385, ok
+test7, 1, eax.restart, 4.435, ok
+test7, 1, lkh, 167.465, ok
+test7, 1, lkh.restart, 29.230, ok
+test7, 1, maos, 10.000, ok
+test8, 1, eax, 4.200, ok
+test8, 1, eax.restart, 4.360, ok
+test8, 1, lkh, 2.745, ok
+test8, 1, lkh.restart, 3.615, ok
+test8, 1, maos, 9.210, ok
+test9, 1, eax, 5.245, ok
+test9, 1, eax.restart, 5.085, ok
+test9, 1, lkh, 61.725, ok
+test9, 1, lkh.restart, 26.595, ok
+test9, 1, maos, 10.015, ok
+test10, 1, eax, 4.685, ok
+test10, 1, eax.restart, 4.635, ok
+test10, 1, lkh, 3.770, ok
+test10, 1, lkh.restart, 3.305, ok
+test10, 1, maos, 9.700, ok

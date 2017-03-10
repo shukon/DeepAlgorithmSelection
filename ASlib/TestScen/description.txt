@@ -1,0 +1,23 @@
+scenario_id : TestScenario
+performance_measures :
+- runtime
+maximize :
+- false
+performance_type :
+- runtime
+algorithm_cutoff_time : 3600
+algorithm_cutoff_memory : ?
+features_cutoff_time : ?
+features_cutoff_memory : ?
+algorithms_deterministic :
+algorithms_stochastic :
+- eax
+- eax.restart
+- lkh
+- lkh.restart
+- maos
+number_of_feature_steps : ?
+feature_steps : ?
+default_steps : ?
+features_deterministic : ?
+features_stochastic : ?

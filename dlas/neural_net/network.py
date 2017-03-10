@@ -28,6 +28,9 @@ import lasagne
 from PIL import Image
 
 from dlas.aslib.aslib_handler import ASlibHandler
+from dlas.neural_net.mnn import build_mnn
+from dlas.neural_net.cnn import build_cnn
+from dlas.neural_net.cnn1d import build_cnn1d
 
 class AdjustVariable(object):
     """ Helper class for update of learning rate and momentum.
@@ -75,181 +78,14 @@ class Network:
         Constructor. Needs config and aslib.
         """
         self.config = config
-        self.network = self.buildTheanoFunctions()
+        if config["nn-model"] in ["cnn", "mnn", "cnn1d"]:
+            self.network = self.buildTheanoFunctions()
         # Load aslib if provided.
         if aslib:
             self.aslib = aslib
         else:
             self.aslib = ASlibHandler()
             with open("aslib_loaded.pickle", "rb") as f: self.aslib.data = pickle.load(f)
-
-    def build_mnn(self, input_var=None):
-        """ Builds a multilayer-neural-network without convolution. """
-        learningRate = self.config["nn-learningrate-start"]
-        dim = self.config["image-dim"]
-
-        hiddenLayers = int(self.config["nn-mnn-layer"])
-        hiddenNodes = int((((dim*dim)+self.config["num-labels"])/2)/hiddenLayers)
-
-        # Input layer, as usual:
-        network = lasagne.layers.InputLayer(shape=(None, 1, dim, dim),
-                                            input_var=input_var)
-
-        # Fully connected layers:
-        for layer in range(hiddenLayers):
-            network = lasagne.layers.dropout(network, p=(layer+1)/10.0)
-            network = lasagne.layers.DenseLayer(
-                network, num_units=hiddenNodes,
-                nonlinearity=lasagne.nonlinearities.rectify)
-
-        # Set regresssion to true for multi-label-classification
-        network.regression=False
-
-        # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-        network = lasagne.layers.DenseLayer(
-                network, num_units=self.config["num-labels"],
-                nonlinearity=lasagne.nonlinearities.softmax)
-
-        return network
-
-    def build_cnn1D(self, input_var=None):
-        # CNN as described in Loreggia et al (2016)
-        # Consisting of:
-        # Input layer 128x128
-        # 32 conv. 3x3, Max pool 2x2, Dropout 0.1
-        # 64 conv. 2x2, Max pool 2x2, Dropout 0.2
-        # 128 conv. 2x2, Max pool 2x2, Dropout 0.3
-        # Fully connected, 1000 nodes, Dropout 0.5
-        # Fully connected, 200 nodes
-        # Output layer, N solvers
-
-        learningRate = self.config["nn-learningrate-start"]
-
-        # Input layer, one-dimensional:
-        dim = self.config["imageDim"]**2
-        network = lasagne.layers.InputLayer(shape=(None, 1, dim),
-                                            input_var=input_var)
-
-        scale = self.config["scale"]
-
-        # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv1DLayer(
-                network, num_filters=32/scale, filter_size=(9),
-                nonlinearity=lasagne.nonlinearities.rectify,
-                W=lasagne.init.GlorotUniform())
-        network = lasagne.layers.MaxPool1DLayer(network, pool_size=(4))
-        network = lasagne.layers.dropout(network, p=0.1)
-
-        # Convolutional layer with 64 kernels of size 2x2.
-        network = lasagne.layers.Conv1DLayer(
-                network, num_filters=64/scale, filter_size=(4),
-                nonlinearity=lasagne.nonlinearities.rectify,
-                W=lasagne.init.GlorotUniform())
-        network = lasagne.layers.MaxPool1DLayer(network, pool_size=(4))
-        network = lasagne.layers.dropout(network, p=0.2)
-
-        # Convolutional layer with 128 kernels of size 2x2.
-        network = lasagne.layers.Conv1DLayer(
-                network, num_filters=128/scale, filter_size=(4),
-                nonlinearity=lasagne.nonlinearities.rectify,
-                W=lasagne.init.GlorotUniform())
-        network = lasagne.layers.MaxPool1DLayer(network, pool_size=(4))
-        network = lasagne.layers.dropout(network, p=0.3)
-
-        # Fully connected layers:
-        network = lasagne.layers.DenseLayer(
-                network, num_units=1000/scale,
-                nonlinearity=lasagne.nonlinearities.rectify)
-        network = lasagne.layers.dropout(network, p=0.5)
-        network = lasagne.layers.DenseLayer(
-                network, num_units=200/scale,
-                nonlinearity=lasagne.nonlinearities.rectify)
-
-        # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-        network = lasagne.layers.DenseLayer(
-                network, num_units=self.config["num-labels"],
-                nonlinearity=lasagne.nonlinearities.sigmoid)
-                #nonlinearity=lasagne.nonlinearities.softmax)
-
-        # Set regresssion to true for multi-label-classification
-        network.regression=True
-
-        # Update learning rate and momentum to be shared variables
-        network.update_learning_rate=theano.shared(float32(learningRate)),
-        network.update_momentum=theano.shared(float32(0.9)),
-
-        return network
-
-    def build_cnn(self, input_var=None):
-        # CNN as described in Loreggia et al (2016)
-        # Consisting of:
-        # Input layer 128x128
-        # 32 conv. 3x3, Max pool 2x2, Dropout 0.1
-        # 64 conv. 2x2, Max pool 2x2, Dropout 0.2
-        # 128 conv. 2x2, Max pool 2x2, Dropout 0.3
-        # Fully connected, 1000 nodes, Dropout 0.5
-        # Fully connected, 200 nodes
-        # Output layer, N solvers
-
-        # Input layer, as usual:
-        dim = self.config["image-dim"]
-        network = lasagne.layers.InputLayer(shape=(None, 1, dim, dim),
-                                            input_var=input_var)
-
-        conv1 = self.config["nn-conv-size-one"]
-        conv2 = self.config["nn-conv-size-two"]
-        # Convolutional layer with 32 kernels of size 3x3.
-        network = lasagne.layers.Conv2DLayer(
-                network, num_filters=32, filter_size=(conv1, conv1),
-                nonlinearity=lasagne.nonlinearities.rectify,
-                W=lasagne.init.GlorotUniform())
-        network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-        network = lasagne.layers.dropout(network, p=0.1)
-
-        # Convolutional layer with 64 kernels of size 2x2.
-        network = lasagne.layers.Conv2DLayer(
-                network, num_filters=64, filter_size=(conv2, conv2),
-                nonlinearity=lasagne.nonlinearities.rectify,
-                W=lasagne.init.GlorotUniform())
-        network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-        network = lasagne.layers.dropout(network, p=0.2)
-
-        # Convolutional layer with 128 kernels of size 2x2.
-        network = lasagne.layers.Conv2DLayer(
-                network, num_filters=128, filter_size=(conv2, conv2),
-                nonlinearity=lasagne.nonlinearities.rectify,
-                W=lasagne.init.GlorotUniform())
-        network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-        network = lasagne.layers.dropout(network, p=0.3)
-
-        # Fully connected layers:
-        network = lasagne.layers.DenseLayer(
-                network, num_units=1000,
-                nonlinearity=lasagne.nonlinearities.rectify)
-        network = lasagne.layers.dropout(network, p=0.5)
-        network = lasagne.layers.DenseLayer(
-                network, num_units=200,
-                nonlinearity=lasagne.nonlinearities.rectify)
-
-        # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-        if self.config["nn-output-nonlinearity"] == "sigmoid":
-            conf_nonlinearity=lasagne.nonlinearities.sigmoid
-        elif self.config["nn-output-nonlinearity"] == "softmax":
-            conf_nonlinearity=lasagne.nonlinearities.softmax
-        else: raise ValueError()
-
-        network = lasagne.layers.DenseLayer(
-                network, num_units=self.config["num-labels"],
-                nonlinearity = conf_nonlinearity)
-
-        # Set regresssion to true for multi-label-classification
-        network.regression = self.config["nn-regression"]
-
-        network.update_learning_rate=theano.shared(float32(self.config["nn-learningrate-start"]))
-        network.update_momentum=theano.shared(float32(self.config["nn-momentum-start"]))
-
-        return network
-
 
     # ############################# Batch iterator ###############################
     # This is just a simple helper function iterating over training data in
@@ -290,11 +126,11 @@ class Network:
         self.input_var, self.target_var = T.tensor4("inputs"), T.matrix("targets")
 
         # Build network
-        if   self.config["nn-model"] == "cnn": network = self.build_cnn(self.input_var)
-        elif self.config["nn-model"] == "mnn": network = self.build_mnn(self.input_var)
+        if   self.config["nn-model"] == "cnn": network = build_cnn(self.input_var)
+        elif self.config["nn-model"] == "mnn": network = build_mnn(self.input_var)
         elif self.config["nn-model"] == "cnn1D":
             self.input_var = T.tensor3("inputs")
-            network = self.build_cnn1D(self.input_var)
+            network = build_cnn1d(self.input_var)
         else: raise ValueError("{} not a modelchoice!".format(self.config["model"]))
 
         # We adjust learning rate and momentum:

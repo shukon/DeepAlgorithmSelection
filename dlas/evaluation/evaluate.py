@@ -1,21 +1,20 @@
 from __future__ import print_function
 
-import sys
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-import logging as log
 import random
 import re
 import pickle
+
+import numpy as np
+import logging as log
 from scipy.stats import f_oneway
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from operator import itemgetter
 
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.data_prep.tsp_label_class import TSPLabelClass
 
-class Evaluator:
+class Evaluator(object):
     """ Evaluates experiments that have been performed and produces some nice
     overviews. Experiments are always defined as a tuple (scen, id)
 
@@ -23,7 +22,7 @@ class Evaluator:
               as table or plot over time.
     """
     def __init__(self):
-        self.basePath = "results/{}/{}/"
+        self.base_path = "results/{}/{}/"
 
         self.aslib = ASlibHandler()
         with open("aslib_loaded.pickle", "rb") as f: self.aslib.data = pickle.load(f)
@@ -68,7 +67,7 @@ class Evaluator:
 
     def inst_name_eval(self, scen, ID):
         """ Evaluation of labeling the instances per generator. """
-        config = pickle.load(open(self.basePath.format(scen,ID)+"0/config.p"))
+        config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p"))
         labeler = TSPLabelClass(config, self.aslib)
         percent = []
         for epoch in range(self._get_num_epo(scen, ID)):
@@ -91,7 +90,7 @@ class Evaluator:
 
     def _get_num_epo(self, scen, ID):
         """Returns number of epochs"""
-        config = pickle.load(open(self.basePath.format(scen,ID)+"0/config.p"))
+        config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p", 'rb'))
         return int(config["nn-numEpochs"])
 
     def _get_par10_per_epoch(self, scen, ID):
@@ -133,7 +132,7 @@ class Evaluator:
                 (instance_names, prediction_array)
                 e.g.: ("inst0021", [0.92, 0.34, 0.5])
         """
-        resultPath = os.path.join(self.basePath.format(scen, ID), str(rep)) + "/"
+        resultPath = os.path.join(self.base_path.format(scen, ID), str(rep)) + "/"
         trainPred =  [a for b in [fold[epoch] for fold in np.load(resultPath+"trainPred.npz")["trainPred"]] for a in b]
         valPred =  [a for b in [fold[epoch] for fold in np.load(resultPath+"valPred.npz")["valPred"]] for a in b]
         testPred = [a for b in [fold[epoch] for fold in np.load(resultPath+"testPred.npz")["testPred"]] for a in b]
@@ -167,8 +166,8 @@ class Evaluator:
         return np.mean(mean), np.mean(std)
 
     def scoresPerEpoch(scen, ID, mode="val"):
-        basePath = "results/{}/{}/".format(scen, ID)
-        with open(basePath + "0/config.p", 'rb') as f:
+        base_path = "results/{}/{}/".format(scen, ID)
+        with open(base_path + "0/config.p", 'rb') as f:
             config = pickle.load(f)
         return zip(*[getScore(scen, ID, epoch=e) for e in range(config["numEpochs"])])
     
@@ -180,7 +179,7 @@ class Evaluator:
             (trainLoss, valLoss, testLoss) -- three lists of losses averaged
             over folds and repetitions.
         """
-        resultPath = self.basePath.format(scen, ID)
+        resultPath = self.base_path.format(scen, ID)
         reps = next(os.walk(resultPath))[1]
         trainLoss, valLoss, testLoss = [], [], []
         for rep in reps:

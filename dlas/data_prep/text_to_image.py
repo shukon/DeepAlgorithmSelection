@@ -12,13 +12,15 @@ class TextToImage(ImagePrep):
     """
     Implements image conversion from text-file to image-file.
     """
-    def __init__(self, image_dim=128, resize_method="LANCZOS", unpack=True,
-                 round_method="closest"):
-        super(TextToImage, self).__init__()
-        self.image_dim = image_dim
-        self.resize_method = resize_method
-        self.unpack = unpack
-        self.round_method = round_method
+    def __init__(self, config):
+        super(TextToImage, self).__init__(config)
+        self.image_dim = config["image-dim"]
+        self.resize_method = config["resize-method"]
+        self.unpack = config["unpack"]
+        self.round_method = config["round-method"]
+        self.id = "-".join([config["scen"],self.image_mode,
+                       str(self.image_dim), self.resize_method,
+                       str(self.unpack), self.round_method])
 
     def get_image_data(self, local_inst):
         """

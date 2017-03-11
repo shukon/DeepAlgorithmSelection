@@ -187,11 +187,11 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 if __name__ == "__main__":
     # Logger config
     log.basicConfig(level=log.DEBUG)
-    log.addLevelName( log.WARNING, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.WARNING))  # Color warnings
-    log.addLevelName( log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
+    log.addLevelName(log.WARNING, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.WARNING))  # Color warnings
+    log.addLevelName(log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
 
-    scen = sys.argv[2]
-    ID = sys.argv[3]
+    scen = sys.argv[2] if len(sys.argv) > 2 else None
+    ID = sys.argv[3] if len(sys.argv) > 3 else None
     eva = Evaluator()
     if sys.argv[1] == "exp":
         if scen == "all":
@@ -204,14 +204,19 @@ if __name__ == "__main__":
             run_experiment(s, ID, c, skip_if_result_exists=False)
             print(eva.print_table(s, ID))
     elif sys.argv[1] == "eval":
-        print(eva.print_table(scen, ID))
-        eva.plot(scen, ID)
+        if ID:
+            print(eva.print_table(scen, ID))
+            eva.plot(scen, ID)
+        else:
+            for element in eva.compare_ids_for_scen(scen):
+                print(element)
     elif sys.argv[1] == "stat":
         # Print stats of scenario
-        log.info("Scenario-statistics for {}:".format(scen))
-        log.info("{} instances, {} solvable.".format(
+        print("Scenario-statistics for {}:".format(scen))
+        print("{} instances, {} solvable.".format(
             len(aslib.get_instances(scen, remove_unsolved=False)),
             len(aslib.get_instances(scen, remove_unsolved=True))))
+        print("Virtual Best Solver: {}".format(aslib.VBS(scen)))
         for solver in aslib.solver_distribution(scen):
             log.info("Solver-Dist.: {}".format(solver))
     elif sys.argv[1] == "prep":

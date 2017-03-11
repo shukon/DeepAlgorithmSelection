@@ -42,7 +42,7 @@ class DataPreparer(object):
         self.img_dir = img_dir
         self.label_dir = label_dir
         #TODO
-        self.log.debug("img_dir: {}, label_dir: {}".format(self.img_dir,
+        self.log.debug("Saving images in: \"{}\", labels in: \"{}\"".format(self.img_dir,
             self.label_dir))
 
     def norm(self, data):
@@ -130,7 +130,7 @@ class DataPreparer(object):
 
     def _set_image_prep(self, image_mode):
         if image_mode == "TextToImage":
-            self.image_prep = TextToImage()
+            self.image_prep = TextToImage(self.config)
         elif image_mode == "FromImage":
             self.image_prep = FromImage(self.config)
         else:

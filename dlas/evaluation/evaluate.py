@@ -32,6 +32,7 @@ class Evaluator(object):
         experiments performed on it. """
         path = "results/{}/".format(scen)
         avail_IDs = next(os.walk(path))[1]
+        return [self.print_table(scen, ID) for ID in avail_IDs]
 
     def print_table(self, scen, ID):
         """ Returns a string which contains a table with the following
@@ -66,7 +67,8 @@ class Evaluator(object):
                 (round(misclassified[0][0], 2), misclassified[1])]
 
     def inst_name_eval(self, scen, ID):
-        """ Evaluation of labeling the instances per generator. """
+        """ Performs "custom" evaluation for labeling the instances per
+        instance-generator/instance-name. """
         config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p"))
         labeler = TSPLabelClass(config, self.aslib)
         percent = []
@@ -91,7 +93,8 @@ class Evaluator(object):
     def _get_num_epo(self, scen, ID):
         """Returns number of epochs"""
         config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p", 'rb'))
-        return int(config["nn-numEpochs"])
+        num_epo = config["nn-numEpochs"] if "nn-numEpochs" in config else config["numEpochs"]
+        return int(num_epo)
 
     def _get_par10_per_epoch(self, scen, ID):
         num_epo = self._get_num_epo(scen, ID)

@@ -23,7 +23,7 @@ def conf(scen, ID, updates = []):
     config["unpack"] = True          # unpack before conversion
     config["remove-comments"] = True  # remove comments (enforced by data-prep)
     config["image-dim"] = 128
-    config["rounding-method"]="ceil"
+    config["round-method"]="ceil"
     config["resize-method"]="LANCZOS"
 
     # Labels

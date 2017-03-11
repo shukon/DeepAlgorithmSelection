@@ -16,10 +16,17 @@ def getConfig(s, e):
         return tsp_inst_name_cnn(s, e)
     elif e == "tsp-idea":
         return tsp_idea(s, e)
+    elif e == "tsp-from-txt":
+        return tsp_from_txt(s, e)
     elif e == "random":
         return tspRand(s)
     else:
         raise ValueError("{} is not defined as an experiment!".format(e))
+
+def tsp_from_txt(s, ID):
+    c = tsp_default(s, ID)
+    c["image-mode"] = "TextToImage"
+    return c
 
 def tsp_conv(s, ID):
     c = tsp_default(s,ID)

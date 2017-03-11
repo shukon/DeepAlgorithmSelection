@@ -200,7 +200,7 @@ if __name__ == "__main__":
             scenarios = [scen]
         for s in scenarios:
             c = exp.getConfig(s, ID)
-            log.basicConfig(filename=os.path.join(c["result_path"], "log.txt"))
+            log.basicConfig(filename=os.path.join(c["resultPath"], "log.txt"))
             run_experiment(s, ID, c, skip_if_result_exists=False)
             print(eva.print_table(s, ID))
     elif sys.argv[1] == "eval":

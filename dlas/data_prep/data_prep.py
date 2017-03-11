@@ -8,6 +8,7 @@ from dlas.data_prep.text_to_image import TextToImage
 from dlas.data_prep.from_image import FromImage
 
 from dlas.data_prep.multi_label_base import MultiLabelBase
+from dlas.data_prep.multi_label_weight import MultiLabelWeight
 from dlas.data_prep.tsp_label_class import TSPLabelClass
 
 
@@ -139,6 +140,8 @@ class DataPreparer(object):
     def _set_label_prep(self, label_mode):
         if label_mode == "MultiLabelBase":
             self.label_prep = MultiLabelBase(self.config, self.aslib)
+        elif label_mode == "MultiLabelWeight":
+            self.label_prep = MultiLabelWeight(self.config, self.aslib)
         elif label_mode == "TSPLabelClass":
             self.label_prep = TSPLabelClass(self.config, self.aslib)
         else:

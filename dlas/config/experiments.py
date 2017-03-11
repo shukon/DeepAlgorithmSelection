@@ -18,10 +18,19 @@ def getConfig(s, e):
         return tsp_idea(s, e)
     elif e == "tsp-from-txt":
         return tsp_from_txt(s, e)
+    elif e == "tsp-weights":
+        return tsp_weights(s, e)
     elif e == "random":
         return tspRand(s)
     else:
         raise ValueError("{} is not defined as an experiment!".format(e))
+
+def tsp_weights(s, ID):
+    c = tsp_default(s, ID)
+    c["label-mode"] = "MultiLabelWeight"
+    c["label-weight-timeout"] = 0.2
+    c["label-weight-best"] = 0.8
+    return c
 
 def tsp_from_txt(s, ID):
     c = tsp_default(s, ID)

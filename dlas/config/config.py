@@ -30,6 +30,7 @@ def conf(scen, ID, updates = []):
     config["label-mode"] = "MultiLabelBase"
     config["label-norm"] = "TimesGood"
     config["num-labels"] = "num-solvers"
+    # for "MultiLabelWeight":
 
     # Neural network configs:
     config["nn-model"] = "cnn"

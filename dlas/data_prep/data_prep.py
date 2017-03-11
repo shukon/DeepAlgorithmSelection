@@ -115,6 +115,7 @@ class DataPreparer(object):
             if self.label_output, writes data into output_dir
         """
         path = os.path.join(self.label_dir, self.label_prep.id+".npy")
+        self.log.debug("Checking for label-data in {}".format(path))
         if (not recalculate and self.label_dir and os.path.isfile(path)):
             self.log.debug("Loading label-data from {}".format(path))
             return np.load(path)

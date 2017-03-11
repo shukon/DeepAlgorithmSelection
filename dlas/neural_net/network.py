@@ -126,11 +126,11 @@ class Network:
         self.input_var, self.target_var = T.tensor4("inputs"), T.matrix("targets")
 
         # Build network
-        if   self.config["nn-model"] == "cnn": network = build_cnn(self.input_var)
-        elif self.config["nn-model"] == "mnn": network = build_mnn(self.input_var)
+        if   self.config["nn-model"] == "cnn": network = build_cnn(self.config, self.input_var)
+        elif self.config["nn-model"] == "mnn": network = build_mnn(self.config, self.input_var)
         elif self.config["nn-model"] == "cnn1D":
             self.input_var = T.tensor3("inputs")
-            network = build_cnn1d(self.input_var)
+            network = build_cnn1d(self.config, self.input_var)
         else: raise ValueError("{} not a modelchoice!".format(self.config["model"]))
 
         # We adjust learning rate and momentum:

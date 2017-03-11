@@ -79,7 +79,7 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
     data = prep(scen, config, "instances/"+scen, recalculate = False)
     inst, X, y = data
 
-    cross_validation(scen, ID, inst, X, y, config, resultPath, rep)
+    cross_validation(scen, ID, inst, X, y, config, result_path, rep)
 
 def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     """

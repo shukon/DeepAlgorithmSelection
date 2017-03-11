@@ -28,8 +28,8 @@ def getConfig(s, e):
 def tsp_weights(s, ID):
     c = tsp_default(s, ID)
     c["label-mode"] = "MultiLabelWeight"
-    c["label-weight-timeout"] = 0.2
-    c["label-weight-best"] = 0.8
+    c["label-weight-timeout"] = 0.9
+    c["label-weight-best"] = 0.1
     return c
 
 def tsp_from_txt(s, ID):

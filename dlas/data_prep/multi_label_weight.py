@@ -36,14 +36,16 @@ class MultiLabelWeight(MultiLabelBase):
         for i in inst:
             par10labels = self.aslib.get_labels(self.config["scen"], i, label="par10")
             times = np.array([cutoff*10-l for l in par10labels])
-            best = np.array([1 if l == min(par10labels) and l < cutoff else 0 for l in par10labels])
-            time_weighted = times * self.weight_timeout + best * self.weight_best
-
-            if self.config["label-norm"] == "TimesGood":
-                labels = [k/float(cutoff*10) for k in time_weighted]
-                y = np.append(y, labels)
+            if self.label_norm == "TimesGood":
+                times_weighted = times/float(cutoff*10)
             else:
-                raise ValueError("{} not recognized as labelID".format(self.label_mode))
+                raise ValueError("{} not recognized as normalization-strategy".format(self.label_norm))
+            best = np.array([1 if l == min(par10labels) and l < cutoff else 0 for l in par10labels])
+            print(best)
+            labels = times_weighted * self.weight_timeout + best * self.weight_best
+            print(labels)
+
+            y = np.append(y, labels)
             """
             elif self.label_mode == "base": y = np.append(y, aslib.getLabels(scen, i, label="status"))
             elif self.label_mode == "OnlyBest": y = np.append(y, [1 if l == min(par10labels) and l < aslib.scenInfo[scen]["cutoffTime"] else 0 for l in par10labels])

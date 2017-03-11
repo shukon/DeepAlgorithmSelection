@@ -149,13 +149,13 @@ class Network:
         # forward pass through the network, disabling dropout layers.
         self.prediction = lasagne.layers.get_output(network)
         self.test_prediction = lasagne.layers.get_output(network, deterministic=True)
-        if (self.config["nn-lossfunction"] == "categorical_crossentropy"):
+        if self.config["nn-lossfunction"] == "categorical_crossentropy":
             self.loss = lasagne.objectives.categorical_crossentropy(self.prediction, self.target_var)
             self.test_loss = lasagne.objectives.categorical_crossentropy(self.test_prediction, self.target_var)
-        elif (self.config["nn-lossfunction"] == "binary_crossentropy"):
+        elif self.config["nn-lossfunction"] == "binary_crossentropy":
             self.loss = lasagne.objectives.binary_crossentropy(self.prediction, self.target_var)
             self.test_loss = lasagne.objectives.binary_crossentropy(self.test_prediction, self.target_var)
-        elif (self.config["nn-lossfunction"] == "squared_error"):
+        elif self.config["nn-lossfunction"] == "squared_error":
             self.loss = lasagne.objectives.squared_error(self.prediction, self.target_var)
             self.test_loss = lasagne.objectives.squared_error(self.test_prediction, self.target_var)
         else:
@@ -181,7 +181,6 @@ class Network:
         elif update_meth == "adagrad"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
         elif update_meth == "adam"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
         else: raise ValueError("{} not a legal option for update-method in neural network.".format(update_meth))
-        #updates = lasagne.updates.adam(loss, params)
 
         # Compile a function performing a training step on a mini-batch (by giving
         # the updates dictionary) and returning the corresponding training loss:
@@ -200,7 +199,12 @@ class Network:
 
 
     def fit(self, X, y, X_val, y_val, X_test, y_test, inst, save=False):
-        """ inst = [[train], [val], [test]] """
+        """
+        Functions that fits the neural network according to the specifications
+        described in the config-dictionary.
+        images = [[train], [val], [test]]
+        labels = [[train], [val], [test]]
+        inst   = [[train], [val], [test]] """
         log.info("Fitting neural network training set for scenario {}, {} epochs.".format(
                      self.config ["scen"], self.config["nn-numEpochs"]))
 
@@ -217,21 +221,23 @@ class Network:
 
         useValidation = self.config["useValidationSet"]
 
-        if self.config["nn-model"] == "cnn1D":
-            X = X.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
-            X_val = X_val.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
-            X_test = X_test.reshape(-1,1,self.config["imageDim"]*self.config["imageDim"])
+        if self.config["nn-model"] == "cnn1d":
+            X = X.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
+            X_val = X_val.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
+            X_test = X_test.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
 
         # Define custom batchsizes for val and test to evalutate whole sets
-        batchsize_val = X_val.shape[0]/8  # Number of instances in set/ 2. TODO: This still might lead to MemOut, do something about it. Also Integer Division, possibly skipping one instance
-        batchsize_test = X_test.shape[0]/8  # Number of instances in set/ 2. TODO: This still might lead to MemOut, do something about it. Also Integer Division, possibly skipping one instance
+        # TODO: This still might lead to MemOut, do something about it.
+        # Also Integer Division, likely skipping instances
+        batchsize_val = X_val.shape[0]/8
+        batchsize_test = X_test.shape[0]/8
 
         # We iterate over epochs:
         for epoch in range(numEpochs):
             # Output format
-            if epoch%25==0:
-                print("Epoch"+8*" "+"Time"+5*" "+"Training Loss  "+"Validation"
-                      " Loss  " + "Validation Accuracy" + "Learningrate" + "Momentum")
+            if epoch%25 == 0:
+                log.info("Epoch"+8*" "+"Time"+5*" "+"Training Loss  "+"Validation"
+                         " Loss  " + "Validation Accuracy" + "Learningrate" + "Momentum")
             # Measure time per epoch
             start_time = time.time()
             # In each epoch, we do a full pass over the training data:
@@ -281,7 +287,6 @@ class Network:
             testAcc.append(test_acc)
 
             # Save predictions
-            start_time = time.time()
             trainpred.append(self.predict_fn(X))
             if useValidation: valpred.append(self.predict_fn(X_val))
             testpred.append(self.predict_fn(X_test))

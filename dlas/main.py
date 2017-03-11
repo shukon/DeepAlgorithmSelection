@@ -186,7 +186,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
 if __name__ == "__main__":
     # Logger config
-    log.basicConfig(level = log.DEBUG)
+    log.basicConfig(level=log.DEBUG)
     log.addLevelName( log.WARNING, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.WARNING))  # Color warnings
     log.addLevelName( log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
 
@@ -200,6 +200,7 @@ if __name__ == "__main__":
             scenarios = [scen]
         for s in scenarios:
             c = exp.getConfig(s, ID)
+            log.basicConfig(filename=os.path.join(c["result_path"], "log.txt"))
             run_experiment(s, ID, c, skip_if_result_exists=False)
             print(eva.print_table(s, ID))
     elif sys.argv[1] == "eval":

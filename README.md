@@ -20,8 +20,8 @@ Each part can be easily modified, partly through options and partly by writing t
 
 [classdiagramm]
 
-_Image-conversion_: So far, you can choose between two options: `FromImage` and `TextToImage`. `FromImage` needs the instances to be available as images, it is mainly responsible for rescaling. `TextToImage` reads in the instance-files in a text-file-format and converts the ascii-symbols into a greyscale-image (see http://www.cs.toronto.edu/~horst/cogrobo/papers/DLforAP.pdf). For both methods you can define image-dimension and rescaling-method through the config-dictionary. To implement a new class you need only derive it as a class from `ImagePrep` in dlas/data_prep/image_prep.py.
+_Image-conversion_: You can choose between two options: `FromImage` and `TextToImage`. `FromImage` needs the instances to be available as images, it is mainly responsible for rescaling. `TextToImage` reads in the instance-files in a text-file-format and converts the ascii-symbols into a greyscale-image (see http://www.cs.toronto.edu/~horst/cogrobo/papers/DLforAP.pdf). For both methods you can define image-dimension and rescaling-method through the config-dictionary. To implement a new class you need only derive it as a class from `ImagePrep` in dlas/data_prep/image_prep.py. The file is required to have the same name as the class.
 
-_Labeling_: Correct labeling is crucial for any learning. Currently, labels are a vector, containing a value between 0 and 1 for each solver, reflecting the solvers ability to solve an instance. `MultiLabelBase` implements this labeling.
+_Labeling_: Correct labeling is crucial for any learning. Currently, labels are a vector, containing a value between 0 and 1 for each solver, reflecting the solvers ability to solve an instance. `MultiLabelBase` implements this labeling. You can implement new classes simply by introducing a new class derived from `LabelPrep`.
 
 _Neural Network_: The neural network used so far is a Convolutional Neural Network. It is implemented in Lasagne. More information soon.

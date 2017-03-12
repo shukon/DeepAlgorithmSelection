@@ -131,7 +131,15 @@ class DataPreparer(object):
         return m
 
     def _set_image_prep(self, image_mode):
-        self.image_prep = self.get_class("dlas.data_prep."+image_mode+"."+image_mode)(self.config)
+        try:
+            self.image_prep = self.get_class("dlas.data_prep."+image_mode+"."+image_mode)(self.config)
+        except ImportError:
+            self.log.error("No class with name {} found. Do file and class have "
+                           "the same name?".format(image_mode))
 
     def _set_label_prep(self, label_mode):
-        self.label_prep = self.get_class("dlas.data_prep."+label_mode+"."+label_mode)(self.config, self.aslib)
+        try:
+            self.label_prep = self.get_class("dlas.data_prep."+label_mode+"."+label_mode)(self.config, self.aslib)
+        except ImportError:
+            self.log.error("No class with name {} found. Do file and class have "
+                           "the same name?".format(label_mode))

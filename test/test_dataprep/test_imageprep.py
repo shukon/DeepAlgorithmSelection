@@ -22,7 +22,7 @@ class ImagePrepTest(unittest.TestCase):
         pass
 
     def test_from_image(self):
-        c = conf.update(self.config, [("image-mode", "FromImage")] 
+        c = conf.update(self.config, [("image-mode", "FromImage")])
         prep = DataPreparer(c, self.aslib,
                             instance_path="test/test_files/instances/fromimage",
                             img_dir="test/test_files/", label_dir="test/test_files/")
@@ -32,8 +32,8 @@ class ImagePrepTest(unittest.TestCase):
                 recalculate=True)
 
     def test_text2image(self):
-        c = conf.update(self.config, [("image-mode", "TextToImage")] 
-        prep = DataPreparer(c, self.aslib, instance_path="test/test_files/",
+        c = conf.update(self.config, [("image-mode", "TextToImage")])
+        prep = DataPreparer(c, self.aslib,
                             instance_path="test/test_files/instances/text2image",
                             img_dir="test/test_files/", label_dir="test/test_files/")
         scen = self.config["scen"]

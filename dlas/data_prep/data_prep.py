@@ -4,14 +4,6 @@ import logging as log
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-from dlas.data_prep.text_to_image import TextToImage
-from dlas.data_prep.from_image import FromImage
-
-from dlas.data_prep.multi_label_base import MultiLabelBase
-from dlas.data_prep.multi_label_weight import MultiLabelWeight
-from dlas.data_prep.tsp_label_class import TSPLabelClass
-
-
 class DataPreparer(object):
     """
     This class is responsible for providing the instances as a numpy-file to the
@@ -130,20 +122,16 @@ class DataPreparer(object):
             np.save(path, label_data)
         return label_data
 
+    def get_class(self, kls):
+        parts = kls.split('.')
+        module = ".".join(parts[:-1])
+        m = __import__( module )
+        for comp in parts[1:]:
+            m = getattr(m, comp)
+        return m
+
     def _set_image_prep(self, image_mode):
-        if image_mode == "TextToImage":
-            self.image_prep = TextToImage(self.config)
-        elif image_mode == "FromImage":
-            self.image_prep = FromImage(self.config)
-        else:
-            raise Exception(image_mode + " not implemented.")
+        self.image_prep = self.get_class("dlas.data_prep."+image_mode+"."+image_mode)(self.config)
 
     def _set_label_prep(self, label_mode):
-        if label_mode == "MultiLabelBase":
-            self.label_prep = MultiLabelBase(self.config, self.aslib)
-        elif label_mode == "MultiLabelWeight":
-            self.label_prep = MultiLabelWeight(self.config, self.aslib)
-        elif label_mode == "TSPLabelClass":
-            self.label_prep = TSPLabelClass(self.config, self.aslib)
-        else:
-            raise Exception(label_mode + " not implemented.")
+        self.label_prep = self.get_class("dlas.data_prep."+label_mode+"."+label_mode)(self.config, self.aslib)

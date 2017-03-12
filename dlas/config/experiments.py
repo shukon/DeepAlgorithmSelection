@@ -3,7 +3,19 @@ import random
 
 import dlas.config.config as conf
 
-def getConfig(s, e):
+def dict_from_file(s, ID):
+    with open("experiments/{}-{}.txt", 'r') as f:
+        content = f.readlines()
+        content = [line.strip("\n") for line in content]
+        content = [line.split("=") for line in content]
+        content = [(name.strip(), value.strip()) for name, value in content]
+        return dict(content)
+
+def getConfig(s, ID):
+    x = dict_from_file(s, ID)
+    return conf.conf(s, ID, x) 
+
+    """
     if e == "tsp-default":
         return tsp_default(s, e)
     elif e == "tsp-adagrad":
@@ -24,7 +36,7 @@ def getConfig(s, e):
         return tspRand(s)
     else:
         raise ValueError("{} is not defined as an experiment!".format(e))
-
+    """
 def tsp_weights(s, ID):
     c = tsp_default(s, ID)
     c["label-mode"] = "MultiLabelWeight"

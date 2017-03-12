@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from dlas.aslib.aslib_handler import ASlibHandler
-from dlas.data_prep.tsp_label_class import TSPLabelClass
+from dlas.data_prep.TSPLabelClass import TSPLabelClass
 
 class Evaluator(object):
     """ Evaluates experiments that have been performed and produces some nice

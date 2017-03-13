@@ -12,8 +12,9 @@ class MultiLabelBase(LabelPrep):
         Base-class provides aslib-instance (self.aslib)
         """
         super(MultiLabelBase, self).__init__(config, aslib)
+        self.scen = config.scen
         self.label_norm = config["label-norm"]
-        self.id = "-".join([config["scen"],self.label_mode, self.label_norm])
+        self.id = "-".join([config.scen, self.label_mode, self.label_norm])
 
     def get_label_data(self, inst):
         """
@@ -26,10 +27,10 @@ class MultiLabelBase(LabelPrep):
                 image-data
         """
         y = np.array([])
-        cutoff = self.aslib.scen_info[self.config["scen"]]["cutoffTime"]
+        cutoff = self.aslib.scen_info[self.scen]["cutoffTime"]
 
         for i in inst:
-            par10labels = self.aslib.get_labels(self.config["scen"], i,
+            par10labels = self.aslib.get_labels(self.scen, i,
                     label="par10")
             time_weighted = [cutoff*10-l for l in par10labels]
 

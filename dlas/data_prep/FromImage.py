@@ -19,7 +19,7 @@ class FromImage(ImagePrep):
             raise ValueError("{} is not a valid resize-option for FromImage-"
                              "conversion".format(config["resize-method"]))
 
-        self.id = "-".join([config["scen"],self.image_mode,
+        self.id = "-".join([config.scen,self.image_mode,
                        str(self.image_dim), config["resize-method"]])
 
     def get_image_data(self, local_inst):

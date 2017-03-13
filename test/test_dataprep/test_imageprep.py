@@ -4,7 +4,7 @@ import logging
 
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.data_prep.data_prep import DataPreparer
-import dlas.config.config as conf
+from dlas.config.config import Config
 
 
 class ImagePrepTest(unittest.TestCase):
@@ -13,7 +13,9 @@ class ImagePrepTest(unittest.TestCase):
         self.logger = logging.getLogger('ImagePrepTest')
         self.logger.setLevel(logging.DEBUG)
 
-        self.config = conf.conf("TestScen", "TestID")
+        self.scen = "TestScen"
+        self.ID = "TestID"
+        self.config = Config("TestScen", "TestID")
         self.aslib = ASlibHandler()
         with open("aslib_loaded.pickle", "rb") as f:
             self.aslib.data = pickle.load(f)
@@ -22,22 +24,20 @@ class ImagePrepTest(unittest.TestCase):
         pass
 
     def test_from_image(self):
-        c = conf.update(self.config, [("image-mode", "FromImage")])
+        c = Config("TestScen", "TestID", {"image-mode":"FromImage"})
         prep = DataPreparer(c, self.aslib,
                             instance_path="test/test_files/instances/fromimage",
                             img_dir="test/test_files/", label_dir="test/test_files/")
-        scen = self.config["scen"]
-        inst = self.aslib.get_instances(scen)
-        img = prep.get_image_data(self.aslib.local_paths(scen, inst),
+        inst = self.aslib.get_instances(self.scen)
+        img = prep.get_image_data(self.aslib.local_paths(self.scen, inst),
                 recalculate=True)
 
     def test_text2image(self):
-        c = conf.update(self.config, [("image-mode", "TextToImage")])
+        c = Config("TestScen", "TestID", {"image-mode":"TextToImage"})
         prep = DataPreparer(c, self.aslib,
                             instance_path="test/test_files/instances/text2image",
                             img_dir="test/test_files/", label_dir="test/test_files/")
-        scen = self.config["scen"]
-        inst = self.aslib.get_instances(scen)
-        img = prep.get_image_data(self.aslib.local_paths(scen, inst),
+        inst = self.aslib.get_instances(self.scen)
+        img = prep.get_image_data(self.aslib.local_paths(self.scen, inst),
                 recalculate=True)
 

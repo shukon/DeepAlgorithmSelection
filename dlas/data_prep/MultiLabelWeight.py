@@ -12,11 +12,12 @@ class MultiLabelWeight(MultiLabelBase):
         Base-class provides aslib-instance (self.aslib)
         """
         super(MultiLabelWeight, self).__init__(config, aslib)
+        self.scen = config.scen
         self.label_norm = config["label-norm"]
         self.weight_timeout = config["label-weight-timeout"]
         self.weight_best = config["label-weight-best"]
         assert(self.weight_timeout+self.weight_best == 1)
-        self.id = "-".join([config["scen"], self.label_mode, self.label_norm,
+        self.id = "-".join([config.scen, self.label_mode, self.label_norm,
                             str(self.weight_timeout),
                             str(self.weight_best)])
 
@@ -31,10 +32,10 @@ class MultiLabelWeight(MultiLabelBase):
                 image-data
         """
         y = np.array([])
-        cutoff = self.aslib.scen_info[self.config["scen"]]["cutoffTime"]
+        cutoff = self.aslib.scen_info[self.scen]]["cutoffTime"]
 
         for i in inst:
-            par10labels = self.aslib.get_labels(self.config["scen"], i, label="par10")
+            par10labels = self.aslib.get_labels(self.scen], i, label="par10")
             times = np.array([cutoff*10-l for l in par10labels])
             if self.label_norm == "TimesGood":
                 times_weighted = times/float(cutoff*10)

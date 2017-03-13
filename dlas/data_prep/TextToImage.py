@@ -18,9 +18,10 @@ class TextToImage(ImagePrep):
         self.resize_method = config["resize-method"]
         self.unpack = config["unpack"]
         self.round_method = config["round-method"]
-        self.id = "-".join([config["scen"],self.image_mode,
-                       str(self.image_dim), self.resize_method,
-                       str(self.unpack), self.round_method])
+        print(config.scen)
+        self.id = "-".join([config.scen, self.image_mode,
+                            str(self.image_dim), self.resize_method,
+                            str(self.unpack), self.round_method])
 
     def get_image_data(self, local_inst):
         """

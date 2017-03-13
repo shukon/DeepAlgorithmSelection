@@ -4,39 +4,18 @@ import random
 import dlas.config.config as conf
 
 def dict_from_file(s, ID):
-    with open("experiments/{}-{}.txt", 'r') as f:
+    with open("experiments/{}.txt".format(ID), 'r') as f:
         content = f.readlines()
         content = [line.strip("\n") for line in content]
         content = [line.split("=") for line in content]
         content = [(name.strip(), value.strip()) for name, value in content]
+        print(dict(content))
         return dict(content)
 
 def getConfig(s, ID):
     x = dict_from_file(s, ID)
-    return conf.conf(s, ID, x) 
+    return conf.conf(s, ID, x)
 
-    """
-    if e == "tsp-default":
-        return tsp_default(s, e)
-    elif e == "tsp-adagrad":
-        return tsp_adagrad(s, e)
-    elif e == "tsp-conv40-9":
-        return tsp_conv(s, e)
-    elif e == "tsp-inst-name":
-        return tsp_inst_name(s, e)
-    elif e == "tsp-inst-name-cnn":
-        return tsp_inst_name_cnn(s, e)
-    elif e == "tsp-idea":
-        return tsp_idea(s, e)
-    elif e == "tsp-from-txt":
-        return tsp_from_txt(s, e)
-    elif e == "tsp-weights":
-        return tsp_weights(s, e)
-    elif e == "random":
-        return tspRand(s)
-    else:
-        raise ValueError("{} is not defined as an experiment!".format(e))
-    """
 def tsp_weights(s, ID):
     c = tsp_default(s, ID)
     c["label-mode"] = "MultiLabelWeight"

@@ -60,13 +60,11 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
     Run experiment (that is defined by name through scen and ID), which is
     further defined in config.
     """
-    log.basicConfig(level = log.DEBUG)
-    config = conf.update(config, updates = [("scen",scen),("num-solvers",
-                len(aslib.get_solvers(scen)))])
+    log.basicConfig(level=log.DEBUG)
     for o in config: log.debug(str(o) + " : " + str(config[o]))
 
     rep = config["repetition"]
-    result_path = config["resultPath"]
+    result_path = config.get_result_path
     if skip_if_result_exists and os.path.exists(result_path):
         log.info("Skipping experiment for scen {} with ID {} in repetition {}, "
                  "because it seems that it has already been performed.".format(

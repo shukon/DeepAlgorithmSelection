@@ -12,8 +12,8 @@ class TSPLabelClass(LabelPrep):
         Base-class provides aslib-instance (self.aslib)
         """
         super(TSPLabelClass, self).__init__(config, aslib)
-        self.scen = config["scen"]
-        self.id = "-".join([config["scen"], self.label_mode])
+        self.scen = config.scen
+        self.id = "-".join([self.scen, self.label_mode])
 
     def get_label_data(self, inst):
         """

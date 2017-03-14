@@ -150,7 +150,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
                             len(folds), config.use_validation, config.rep))
         net = Network(config)
         # Is this really the best method? ...
-        result = net.fit(X_train, y_train, X_val, y_val, X_test, y_test, config, [inst_train, inst_val, inst_test])
+        result = net.fit([X_train, X_val, X_test], [y_train, y_val, y_test], [inst_train, inst_val, inst_test])
         # PE=per epoch,TP=times to predict,L=loss,P=prediction,A=accuracy
         if result: timesPE, timesTP, trL, vaL, teL, trP, vaP, teP, vaA, teA = result
         else:

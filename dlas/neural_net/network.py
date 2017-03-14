@@ -198,7 +198,7 @@ class Network:
         return network
 
 
-    def fit(self, X, y, X_val, y_val, X_test, y_test, inst, save=False):
+    def fit(self, X, y, inst, save=False):
         """
         Functions that fits the neural network according to the specifications
         described in the config-dictionary.
@@ -207,6 +207,8 @@ class Network:
         inst   = [[train], [val], [test]] """
         log.info("Fitting neural network training set for scenario {}, {} epochs.".format(
                      self.config ["scen"], self.config["nn-numEpochs"]))
+        X, X_val, X_test = X
+        y, y_val, y_test = y
 
         log.info("Starting training...")
         trainloss, valloss, testloss = [], [], []

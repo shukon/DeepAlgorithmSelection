@@ -42,19 +42,16 @@ class Config(object):
         with open("experiments/{}.txt".format(ID), 'r') as f:
             content = f.readlines()
             content = [tuple(line.strip("\n").split("=")) for line in content if line != "\n"]
-            print(content)
             content = [(name.strip(), value.strip()) for name, value in content]
             content = dict(content)
             for c in content:
                 try:
                     content[c] = float(content[c])
                     if content[c].is_integer():
-                        print(content[c])
                         content[c] = int(content[c])
                 except ValueError:
                     pass
-            print(dict(content))
-            return dict(content)
+            return content
 
 if __name__ == "__main__":
     c = Config("TestScen", "TestID")

@@ -59,7 +59,7 @@ def build_cnn(config, input_var=None):
     else: raise ValueError()
 
     network = lasagne.layers.DenseLayer(
-            network, num_units=config["num-labels"],
+            network, num_units=config.num_labels,
             nonlinearity = conf_nonlinearity)
 
     # Set regresssion to true for multi-label-classification

@@ -12,15 +12,14 @@ import numpy as np
 from dlas.neural_net.network import Network
 from dlas.data_prep.data_prep import DataPreparer
 from dlas.config.config import Config
-import dlas.config.experiments as exp
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.evaluation.evaluate import Evaluator
 
 log.basicConfig(level=log.DEBUG)
 
-aslib = ASlibHandler()
+ASLIB = ASlibHandler()
 with open("aslib_loaded.pickle", "rb") as f:
-    aslib.data = pickle.load(f)
+    ASLIB.data = pickle.load(f)
 
 def prep(scen, config, instance_path, recalculate = False):
     """
@@ -46,10 +45,14 @@ def prep(scen, config, instance_path, recalculate = False):
         y    : label-data
     """
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:
-    inst = aslib.get_instances(scen, remove_unsolved=False)
-    preparer = DataPreparer(config, aslib, instance_path, "images/", "labels/")
+    inst = ASLIB.get_instances(scen, remove_unsolved=False)
+    preparer = DataPreparer(config, ASLIB, instance_path, "images/", "labels/")
 
-    local_inst = [aslib.local_path(scen, i) for i in inst]
+    for folder in ["images", "labels", "results"]:
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+
+    local_inst = [ASLIB.local_path(scen, i) for i in inst]
     X = preparer.get_image_data(local_inst, recalculate)  #  t = conversion times
     y = preparer.get_label_data(inst, recalculate)
 
@@ -61,10 +64,11 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
     further defined in config.
     """
     log.basicConfig(level=log.DEBUG)
-    for o in config: log.debug(str(o) + " : " + str(config[o]))
+    log.debug(config.config)
 
-    rep = config["repetition"]
-    result_path = config.get_result_path
+    rep = config.rep
+    result_path = config.result_path
+
     if skip_if_result_exists and os.path.exists(result_path):
         log.info("Skipping experiment for scen {} with ID {} in repetition {}, "
                  "because it seems that it has already been performed.".format(
@@ -76,6 +80,7 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
     # We assume ASlibHandler is matching from execdir
     data = prep(scen, config, "instances/"+scen, recalculate = False)
     inst, X, y = data
+    config.num_labels = len(y[0])
 
     cross_validation(scen, ID, inst, X, y, config, result_path, rep)
 
@@ -101,7 +106,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     timesPerEpoch  = []  # Save times per epoch per fold, see above
     timesToPredict = []  # How long it takes for each fold to predict the values on average
 
-    folds = aslib.getCVfolds(scen)  # Use folds from ASlib-scenario
+    folds = ASLIB.getCVfolds(scen)  # Use folds from ASlib-scenario
 
     log.debug("Number of instances in list: {}, number of images in image-data: {}".format(len(inst), len(X)))
     assert(len(X)==len(inst))
@@ -117,7 +122,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
     for test_fold in folds:
         # We use the fold following the current testfold for validation (test 1 -> val 2, ... test 10 -> val 1)
-        valInst = folds[(folds.index(test_fold)+1+config["repetition"])%len(folds)]
+        valInst = folds[(folds.index(test_fold)+1+config.rep)%len(folds)]
         trainInst = [i for i in inst if not (i in test_fold or i in valInst)]
 
         indices_test  = [inst.index(i) for i in test_fold]
@@ -142,14 +147,15 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
         valFolds.append(valInst)
 
         log.info("Now training with crossvalidation, test-fold {} of {}, use Validation: {}, repetition {}.".format(folds.index(test_fold),
-                            len(folds), config["useValidationSet"], config["repetition"]))
+                            len(folds), config.use_validation, config.rep))
         net = Network(config)
         # Is this really the best method? ...
         result = net.fit(X_train, y_train, X_val, y_val, X_test, y_test, config, [inst_train, inst_val, inst_test])
         # PE=per epoch,TP=times to predict,L=loss,P=prediction,A=accuracy
         if result: timesPE, timesTP, trL, vaL, teL, trP, vaP, teP, vaA, teA = result
         else:
-            errorLog ="failedrun_{}_{}_{}.txt\"".format(scen, config["runID"], config["repetition"])
+            errorLog ="failedrun_{}_{}_{}.txt\"".format(scen, config.ID,
+                    config.rep)
             log.error("Training failed. Saving {}.".format(errorLog))
             with open(errorLog, 'w') as f: f.write(errorLog)
             return
@@ -166,7 +172,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
         valAcc.append(vaA)             # Accuracies
         testAcc.append(teA)
     # Pickle config for saving in results
- 
+
     np.savez(os.path.join(resultPath, "timesPerEpoch.npz"), timesPerEpoch=timesPerEpoch)
     np.savez(os.path.join(resultPath, "timesToPredict.npz"), timesToPredict=timesToPredict)
     np.savez(os.path.join(resultPath, "trainLoss.npz"), trainLoss=trainLoss)
@@ -198,7 +204,7 @@ if __name__ == "__main__":
             scenarios = [scen]
         for s in scenarios:
             c = Config(s, ID)
-            log.basicConfig(filename=os.path.join(c["resultPath"], "log.txt"))
+            log.basicConfig(filename=os.path.join(c.result_path, "log.txt"))
             run_experiment(s, ID, c, skip_if_result_exists=False)
             print(eva.print_table(s, ID))
     elif sys.argv[1] == "eval":
@@ -212,10 +218,10 @@ if __name__ == "__main__":
         # Print stats of scenario
         print("Scenario-statistics for {}:".format(scen))
         print("{} instances, {} solvable.".format(
-            len(aslib.get_instances(scen, remove_unsolved=False)),
-            len(aslib.get_instances(scen, remove_unsolved=True))))
-        print("Virtual Best Solver: {}".format(aslib.VBS(scen)))
-        for solver in aslib.solver_distribution(scen):
+            len(ASLIB.get_instances(scen, remove_unsolved=False)),
+            len(ASLIB.get_instances(scen, remove_unsolved=True))))
+        print("Virtual Best Solver: {}".format(ASLIB.VBS(scen)))
+        for solver in ASLIB.solver_distribution(scen):
             log.info("Solver-Dist.: {}".format(solver))
     elif sys.argv[1] == "prep":
         # Prepare image and label

@@ -219,7 +219,7 @@ class Network:
         numEpochs = self.config["nn-numEpochs"]
         scen = self.config["scen"]
 
-        useValidation = self.config["useValidationSet"]
+        useValidation = self.config.use_validation
 
         if self.config["nn-model"] == "cnn1d":
             X = X.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
@@ -229,15 +229,14 @@ class Network:
         # Define custom batchsizes for val and test to evalutate whole sets
         # TODO: This still might lead to MemOut, do something about it.
         # Also Integer Division, likely skipping instances
-        batchsize_val = X_val.shape[0]/8
-        batchsize_test = X_test.shape[0]/8
+        batchsize_val =int(X_val.shape[0]/8)
+        batchsize_test = int(X_test.shape[0]/8)
 
         # We iterate over epochs:
         for epoch in range(numEpochs):
             # Output format
             if epoch%25 == 0:
-                log.info("Epoch"+8*" "+"Time"+5*" "+"Training Loss  "+"Validation"
-                         " Loss  " + "Validation Accuracy" + "Learningrate" + "Momentum")
+                log.info("Epoch"+8*" "+"Time"+5*" "+"Training Loss  "+"Validation Loss")
             # Measure time per epoch
             start_time = time.time()
             # In each epoch, we do a full pass over the training data:

@@ -1,9 +1,11 @@
+image-mode = TextToImage
 nn-learningrate-start = 0.1
 nn-learningrate-stop = 0.0001
 nn-momentum-start = 0.9
 nn-momentum-stop = 0.999
 image-mode = FromImage
 label-mode = MultiLabelBase
+num-labels = num-solvers
 image-dim = 100
 nn-model = cnn
 nn-numEpochs = 30

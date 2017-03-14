@@ -1,3 +1,7 @@
+label-mode = MultiLabelWeight
+label-weight-time = 0.9
+label-weight-best = 0.1
+
 nn-learningrate-start = 0.1
 nn-learningrate-stop = 0.0001
 nn-momentum-start = 0.9

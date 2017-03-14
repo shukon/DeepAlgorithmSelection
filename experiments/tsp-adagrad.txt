@@ -1,0 +1,3 @@
+nn-learningrate-start = 0.001
+nn-update-method = adagrad
+nn-numEpochs = 20

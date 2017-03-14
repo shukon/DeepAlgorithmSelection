@@ -8,8 +8,6 @@ import pickle
 import numpy as np
 import logging as log
 from scipy.stats import f_oneway
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.data_prep.TSPLabelClass import TSPLabelClass
@@ -200,11 +198,13 @@ class Evaluator(object):
             elif o == "SOA":  line.append(self.aslib.getSOA(scen))
             else: raise Exception("{} is not an option.".format(o))
         return options, line
- 
+
     def plot(self, scen, ID, train=True, val=True, test=False, output_dir = "."):
         """
         Plot train-/valLoss vs PAR10 over epochs.
         """
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_pdf import PdfPages
         # Get data
         trainLoss   = self.getLoss(scen, ID)[0]
         trainLossMean, trainLossStd   = np.mean(trainLoss, axis=0), np.std(trainLoss, axis=0)

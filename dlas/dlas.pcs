@@ -1,5 +1,5 @@
 image-mode {TextToImage, FromImage}[TextToImage]
-image-dim [16, 512] [128]
+image-dim [16, 512] [128]i
 resize-method {LANCZOS, BICUBIC} [LANCZOS]
 # For TextToImage
   unpack {0, 1} [1]           # unpack before conversion
@@ -9,28 +9,27 @@ resize-method {LANCZOS, BICUBIC} [LANCZOS]
 label-mode {MultiLabelBase, MultiLabelWeight, TSPInstClass} [MultiLabelBase]
 label-norm {TimesGood} [TimesGood]
 # For MultiLabelWeight:
-  weight_time [0.0, 1.0] [0.5]
-  weight_best [0.0, 1.0] [0.5]
+  label-weight-time [0.0, 1.0] [0.5]
+  label-weight-best [0.0, 1.0] [0.5]
 
 # network configs:
 nn-model {cnn, cnn1d, mnn} [cnn]
-nn-numEpochs [10, 100] [30]
-nn-batchsize [32, 128] [64]
+nn-numEpochs [10, 100] [30]i
+nn-batchsize [32, 128] [64]i
 nn-update-method {sgd, momentum, nesterov} [nesterov]
 nn-lossfunction {binary_crossentropy, categorical_crossentropy, squared_error} [binary_crossentropy]
-nn-learningrate-start [0.0001, 0.03] [0.03]
-nn-learningrate-stop [0.0001, 0.03] [0.03]
+nn-learningrate-start [0.0001, 1] [0.03]
+nn-learningrate-stop [0.0001, 1] [0.03]
 nn-momentum-start [0.9, 0.999] [0.9]
 nn-momentum-stop [0.9, 0.999] [0.999]
 nn-regression {0, 1} [1]
 nn-output-nonlinearity {sigmoid, softmax} [sigmoid]
 #CNN:
-  nn-conv-size-one [1, 10] [3]
-  nn-conv-size-two [1, 10] [2]
+  nn-conv-size-one [1, 10] [3]i
+  nn-conv-size-two [1, 10] [2]i
     #config["epsilon"] = 1e-08
     #config["rho"] = 0.95
     #config["beta1"], config["beta2"] = 0.9, 0.999
-useValidationSet {0, 1} [1]
 
 
 # Forbidden:

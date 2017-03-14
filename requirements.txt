@@ -1,4 +1,8 @@
+nolearn
 numpy>=1.7.1
 scipy>=0.18.1
 ConfigSpace>=0.3.1
 scikit-learn
+pillow
+liac-arff
+matplotlib

@@ -1,0 +1,8 @@
+
+nn-learningrate-start = 0.0001
+nn-learningrate-stop = 0.01
+label-mode = TSPLabelClass
+nn-regression = 0
+nn-output-nonlinearity = softmax
+lossFunction = categorical_crossentropy
+nn-update-method = adagrad

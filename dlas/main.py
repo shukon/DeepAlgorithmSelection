@@ -11,7 +11,7 @@ import numpy as np
 
 from dlas.neural_net.network import Network
 from dlas.data_prep.data_prep import DataPreparer
-import dlas.config.config as conf
+from dlas.config.config import Config
 import dlas.config.experiments as exp
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.evaluation.evaluate import Evaluator

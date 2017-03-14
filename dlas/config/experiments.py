@@ -5,9 +5,7 @@ import dlas.config.config as conf
 
 def dict_from_file(s, ID):
     with open("experiments/{}.txt".format(ID), 'r') as f:
-        content = f.readlines()
-        content = [line.strip("\n") for line in content]
-        content = [line.split("=") for line in content]
+        content = [line.strip("\n").split("=") for line in f.readlines]
         content = [(name.strip(), value.strip()) for name, value in content]
         print(dict(content))
         return dict(content)

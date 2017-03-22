@@ -66,7 +66,7 @@ class Evaluator(object):
 
     def inst_name_eval(self, scen, ID):
         """ Performs "custom" evaluation for labeling the instances per
-        instance-generator/instance-name. """
+        instance-generator/instance-name. (Written for specific experiment) """
         config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p"))
         labeler = TSPLabelClass(config, self.aslib)
         percent = []
@@ -89,7 +89,7 @@ class Evaluator(object):
                 str(np.argmax(percent)))
 
     def _get_num_epo(self, scen, ID):
-        """Returns number of epochs"""
+        """Returns number of epochs (retrieved from first repetition)"""
         config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p", 'rb'))
         num_epo = config["nn-numEpochs"] if "nn-numEpochs" in config else config["numEpochs"]
         return int(num_epo)
@@ -166,19 +166,13 @@ class Evaluator(object):
         # We average over the repetitions
         return np.mean(mean), np.mean(std)
 
-    def scoresPerEpoch(scen, ID, mode="val"):
-        base_path = "results/{}/{}/".format(scen, ID)
-        with open(base_path + "0/config.p", 'rb') as f:
-            config = pickle.load(f)
-        return zip(*[getScore(scen, ID, epoch=e) for e in range(config["numEpochs"])])
-    
     def getLoss(self, scen, ID):
         """ Calculates the loss-values for a given experiment.
         Always a list for all epochs averaged over folds.
 
         Returns:
             (trainLoss, valLoss, testLoss) -- three lists of losses averaged
-            over folds and repetitions.
+            over repetitions.
         """
         resultPath = self.base_path.format(scen, ID)
         reps = next(os.walk(resultPath))[1]
@@ -187,54 +181,75 @@ class Evaluator(object):
             trainLoss.append(np.load(resultPath+rep+"/"+"trainLoss.npz")["trainLoss"])
             valLoss.append(np.load(resultPath  +rep+"/"+"valLoss.npz")["valLoss"])
             testLoss.append(np.load(resultPath +rep+"/"+"testLoss.npz")["testLoss"])
+            print(np.array(trainLoss).shape)
+            print("!!!!!!!!!!!!!!!!!!!")
         return np.mean(trainLoss, axis=0), np.mean(valLoss, axis=0), np.mean(testLoss, axis=0)
 
     def print_scen_info(self, scen, options=["VBS","BSS","rand","SOA"]):
         line = [scen]
         for o in options:
             if o == "VBS":    line.append(self.aslib.getVBS(scen)[0])
-            elif o == "BSS":  line.append(self.aslib.getBSS(scen)[0])
-            elif o == "rand": line.append(self.aslib.getRandom(scen)[0])
-            elif o == "SOA":  line.append(self.aslib.getSOA(scen))
-            else: raise Exception("{} is not an option.".format(o))
+            if o == "BSS":  line.append(self.aslib.getBSS(scen)[0])
+            if o == "rand": line.append(self.aslib.getRandom(scen)[0])
+            if o == "SOA":  line.append(self.aslib.getSOA(scen))
         return options, line
 
     def plot(self, scen, ID, train=True, val=True, test=False, output_dir = "."):
         """
-        Plot train-/valLoss vs PAR10 over epochs.
+        Plot train-/valLoss vs PAR10 over epochs. Averaged over CV-folds.
         """
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_pdf import PdfPages
-        # Get data
+        # Get data (already averaged over repetitions) and average over folds
         trainLoss   = self.getLoss(scen, ID)[0]
         trainLossMean, trainLossStd   = np.mean(trainLoss, axis=0), np.std(trainLoss, axis=0)
         valLoss   = self.getLoss(scen, ID)[1]
         valLossMean, valLossStd   = np.mean(valLoss, axis=0), np.std(valLoss, axis=0)
-        valPAR10mean, valPAR10std = zip(*self._get_par10_per_epoch(scen, ID))  # per epoch
+
+        valPAR10mean, valPAR10std = zip(*self._get_par10_per_epoch(scen, ID))
+        valPercSolvedMean, valPercSolvedStd = zip(*self._get_percent_solved_per_epoch(scen, ID))
+        valMisclassifiedMean, valMisclassifiedStd = zip(*self._get_misclassified_per_epoch(scen, ID))
+
+        numEpochs = range(len(valLossMean))
 
         # Plot
-        fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
-        numEpochs = range(len(valLossMean))
+        # upper left: loss vs PAR10,    upper right: loss vs perc_solved
+        # lower left: loss vs misclass, lower right: ?
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharey=True)
+
+        # Plot losses
         ax1.plot(numEpochs, valLossMean, 'b-')
         ax1.plot(numEpochs, trainLossMean, 'b+')
         ax1.set_xlabel('epochs')
-        # Make the y-axis label and tick labels match the line color.
         ax1.set_ylabel('validation loss (-), train loss (+)', color='b')
         for tl in ax1.get_yticklabels(): tl.set_color('b')
-        # Make twin for PAR10
+
+        # Make twin and plot PAR10
         ax11 = ax1.twinx()
         ax11.plot(numEpochs, valPAR10mean, 'r')
         ax11.set_ylabel('PAR10', color='r')
         for tl in ax11.get_yticklabels(): tl.set_color('r')
+
         # Second plot
         ax2.plot(numEpochs, valLossMean, 'b-')
         ax2.set_xlabel('epochs')
         ax2.set_ylabel('validation loss (-), train loss (+)', color='b')
         for tl in ax2.get_yticklabels(): tl.set_color('b')
-        # Make twin for PAR10
+        # Make twin for % solved
         ax21 = ax2.twinx()
-        ax21.plot(numEpochs, valPAR10mean, 'r')
-        ax21.set_ylabel('PAR10', color='r')
+        ax21.plot(numEpochs, valPercSolvedMean, 'r')
+        ax21.set_ylabel('% Solved', color='r')
+
+        # Third plot
+        ax3.plot(numEpochs, valLossMean, 'b-')
+        ax3.set_xlabel('epochs')
+        ax3.set_ylabel('validation loss (-), train loss (+)', color='b')
+        for tl in ax2.get_yticklabels(): tl.set_color('b')
+        # Make twin for misclassified
+        ax31 = ax3.twinx()
+        ax31.plot(numEpochs, valMisclassifiedMean, 'r')
+        ax31.set_ylabel('Misclassified', color='r')
+
         fig.tight_layout()
         #plt.show()
         with PdfPages(os.path.join(output_dir, scen+"_"+ID+"_plot.pdf")) as pdf:

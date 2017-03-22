@@ -23,21 +23,21 @@ class ImagePrepTest(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_from_image(self):
-        c = Config("TestScen", "TestID", {"image-mode":"FromImage"})
-        prep = DataPreparer(c, self.aslib,
-                            instance_path="test/test_files/instances/fromimage",
-                            img_dir="test/test_files/", label_dir="test/test_files/")
-        inst = self.aslib.get_instances(self.scen)
-        img = prep.get_image_data(self.aslib.local_paths(self.scen, inst),
-                recalculate=True)
+    #def test_from_image(self):
+    #    c = Config("TestScen", "TestID", {"image-mode":"FromImage"})
+    #    prep = DataPreparer(c, self.aslib,
+    #                        instance_path="test/test_files/instances/fromimage",
+    #                        img_dir="test/test_files/", label_dir="test/test_files/")
+    #    inst = self.aslib.get_instances(self.scen)
+    #    img = prep.get_image_data(self.aslib.local_paths(self.scen, inst),
+    #            recalculate=True)
 
-    def test_text2image(self):
-        c = Config("TestScen", "TestID", {"image-mode":"TextToImage"})
-        prep = DataPreparer(c, self.aslib,
-                            instance_path="test/test_files/instances/text2image",
-                            img_dir="test/test_files/", label_dir="test/test_files/")
-        inst = self.aslib.get_instances(self.scen)
-        img = prep.get_image_data(self.aslib.local_paths(self.scen, inst),
-                recalculate=True)
+    #def test_text2image(self):
+    #    c = Config("TestScen", "TestID", {"image-mode":"TextToImage"})
+    #    prep = DataPreparer(c, self.aslib,
+    #                        instance_path="test/test_files/instances/text2image",
+    #                        img_dir="test/test_files/", label_dir="test/test_files/")
+    #    inst = self.aslib.get_instances(self.scen)
+    #    img = prep.get_image_data(self.aslib.local_paths(self.scen, inst),
+    #            recalculate=True)
 

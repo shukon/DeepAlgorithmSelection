@@ -225,5 +225,5 @@ if __name__ == "__main__":
             log.info("Solver-Dist.: {}".format(solver))
     elif sys.argv[1] == "prep":
         # Prepare image and label
-        c = exp.getConfig(scen, ID)
+        c = Config(scen, ID)
         prep(scen, c, "instances/"+scen, recalculate = True)

@@ -11,6 +11,7 @@ import re
 import logging as log
 import random
 import pickle
+import shutil
 
 import arff
 import numpy as np
@@ -30,40 +31,25 @@ class ASlibHandler(object):
     data = {}    # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
     instances = {}
     times = {}
-    scen_info = {"TestScen"    : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": 43,     "bss":10,       "vbs": 5},
-                "ASP-POTASSCO" : {"d":"ASP", "cutoffTime":600  ,"state_of_art": 115.5,  "bss": 534.1,   "vbs": 21.3},
-                "CSP-2010"     : {"d":"CSP", "cutoffTime":5000 ,"state_of_art": 247.7,  "bss": 1087.4,  "vbs": 107.7},
-                "CSP-MZN-2013" : {"d":"CSP", "cutoffTime":1800 ,"state_of_art": None,   "bss": None,    "vbs": None},
-                "QBF-2011"     : {"d":"QBF", "cutoffTime":3600 ,"state_of_art": 910.0,  "bss": 9172.3,  "vbs": 95.9},
-                "QBF-2014"     : {"d":"QBF", "cutoffTime":900  ,"state_of_art": 0,   "bss": 0,    "vbs": 0},
-                "SAT11-HAND"   : {"d":"SAT", "cutoffTime":5000 ,"state_of_art": 4976.1, "bss": 17815.8, "vbs": 478.3},
-                "SAT11-INDU"   : {"d":"SAT", "cutoffTime":5000 ,"state_of_art": 5395.9, "bss": 8985.6,  "vbs": 419.9},
-                "SAT11-RAND"   : {"d":"SAT", "cutoffTime":5000 ,"state_of_art": 877.5,  "bss": 14938.6, "vbs": 227.3},
-                "SAT12-ALL"    : {"d":"SAT", "cutoffTime":1200 ,"state_of_art": 804.5,  "bss": 2967.9,  "vbs": 93.7},
-                "SAT12-HAND"   : {"d":"SAT", "cutoffTime":1200 ,"state_of_art": 886.3,  "bss": 3944.2,  "vbs": 113.2},
-                "SAT12-INDU"   : {"d":"SAT", "cutoffTime":1200 ,"state_of_art": 774.6,  "bss": 1360.6,  "vbs": 88.1},
-                "SAT12-RAND"   : {"d":"SAT", "cutoffTime":1200 ,"state_of_art": 425.5,  "bss": 568.5,   "vbs": 46.9},
-                "SAT15-INDU"   : {"d":"SAT", "cutoffTime":3600 ,"state_of_art": None,   "bss": None,    "vbs": None},
-                "MAXSAT12-PMS" : {"d":"SAT", "cutoffTime":2100 ,"state_of_art": 166.8,  "bss": 2111.6,  "vbs": 40.7},
-                "MAXSAT15-PMS-INDU" : {"d":"SAT", "cutoffTime":1800 ,"state_of_art": None,   "bss": None,    "vbs": None},
-                "PROTEUS-2014" : {"d":"CSP", "cutoffTime":3600 ,"state_of_art": 1321.7, "bss": 10756.3, "vbs": 26.3},
-                "TSP"          : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 16.97333, "vbs": 10.80658},
-                "TSP-MORPHED"  : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-NETGEN"   : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-RUE"      : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-MORPHED-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-NETGEN-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-RUE-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0}}
+    scen_info = {
+                 "TSP"          : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 16.97333, "vbs": 10.80658},
+                 }
 
 
-    def __init__(self, path="ASlib/"):
-        """ Path is the relative path to the ASlib-folder """
+    def __init__(self, path="ASlib/", instance_path="instances/"):
+        """ Initialize an ASlibHandler.
+
+        Args:
+            path -- string
+                Path to ASlib-scenarios
+            instance_path -- string
+                Path to instances (or where they should be after matching)"""
         self.source = path
+        self.instance_path = instance_path
 
     def load_scenario(self, scen):
         """
-        Loads scenario data and attempts to match instances in scenario to local
+        Load scenario data and attempt to match instances in scenario to local
         instance-files.
         """
         # Find all instances in specified instance-directories.
@@ -73,19 +59,19 @@ class ASlibHandler(object):
         log.info("Loading {} from \"{}\" into memory.".format(scen, self.source))
         path = os.path.join(os.getcwd(), self.source, scen, "algorithm_runs.arff")
         log.debug("Using {}".format(path))
-        # Save scenario-data data[scen][inst][solver] = (status, time, repitions)
+
+        # Save scenario-data data[scen][inst][solver] = (status, time, repetions)
         dataset = arff.load(open(path, "r"))
         self.data[scen] = {}
-        # Keep track of matched instances
-        aslib_inst, local_inst, notfound = [], [], []
+
+        # Matching instances
         # row[0] = instance in ASlib, row[1] = num of repitions, row[2] = solver, row[3] = runtime, row[4] = status
-        for row in dataset["data"]:  #  dataset["data"] consists of 5-tuples with evaluations
-            matched = self._match(row[0], scen)
-            if matched:
+        notfound = []
+        for row in dataset["data"]:  #  dataset["data"] consists of 5-tuples
+            local_name = self._match(row[0], scen)
+            if local_name:
                 if row[0] not in self.data[scen]: # Instance has not been seen before, simply add (locPath, solverDict)
-                    self.data[scen][row[0]] = [matched, {}, True, -1]
-                    aslib_inst.append(row[0])
-                    local_inst.append(matched)
+                    self.data[scen][row[0]] = [local_name, {}, True, -1]
                 # data[scen][inst][solver-dict][solver] = (status, runtime, repitions) 
                 self.data[scen][row[0]][1][row[2]] = (row[4], row[3], row[1])
             else:
@@ -99,24 +85,27 @@ class ASlibHandler(object):
 
         # Report problems
         if len(notfound) > 0:
-            num = len(aslib_inst)
             error_path = "tmptxt/debug/notFoundDebug.txt"
             log.warning("Only matched {} of {} instances in {}. Saving not found files in \"{}\".".format(
-                num, len(set([a[0] for a in dataset["data"]])), scen, error_path))
+                len(self.data[scen]), len(set([a[0] for a in dataset["data"]])), scen, error_path))
             with open(error_path, "w") as f:
                 for n in notfound: f.write(n+"\n")
         else:
             log.info("All {} in {} matched.".format(len(set([a[0] for a in dataset["data"]])), scen))
 
         # Mark Cross-Validation-folds
-        path = os.getcwd() + "/" + self.source + scen + "/cv.arff"
-        cv_data = arff.load(open(path, "r"))
+        cv_path = os.getcwd() + "/" + self.source + scen + "/cv.arff"
+        cv_data = arff.load(open(cv_path, "r"))
         for row in cv_data["data"]:
             self.data[scen][row[0]][3] = row[2]
 
-        assert len(aslib_inst)==len(set([a[0] for a in dataset["data"]]))
-        assert len(aslib_inst)==len(local_inst)
-        return aslib_inst, local_inst
+        # copy all files to their "correct" location according to
+        # aslib-file.
+        if True:
+            self.copy_to_actual_path(scen)
+
+        assert len(self.data[scen])==len(set([a[0] for a in dataset["data"]]))
+        return self.get_instances(scen), self.local_paths(scen, self.get_instances(scen))
 
     def _load_all_inst(self, inst_dir=os.path.join(os.getcwd(), "instances/"),
             accepted=re.compile("^.*\.(?!jpg$|png$)[^.]+$")):
@@ -224,6 +213,23 @@ class ASlibHandler(object):
                 self.evaluate(scen,inst,[s for x in inst],"par10"),timeouts))
         return lines
 
+    def copy_to_actual_path(self, scen):
+        """ Copies all instances for scenario from matched local-paths to the
+        aslib-path (in self.instance_path/scen/). """
+        basepath = os.path.join(self.instance_path, scen)
+        if not os.path.isdir(basepath):
+            log.debug("Make {}".format(basepath))
+            os.makedirs(basepath)
+        loc_act_insts = zip(self.local_paths(scen, self.get_instances(scen)),
+                self.get_instances(scen))
+        log_first = True
+        for loc, act in loc_act_insts:
+            if log_first:
+                log.debug("Copy {} to {}".format(loc, act))
+                log_first = False
+            shutil.copy(loc, os.path.join(basepath, act))
+            self.data[scen][act][0] = os.path.join(basepath, act)
+
 
     ## Instance-wise functions:
     def solved_by_any(self, scen, inst):
@@ -268,9 +274,8 @@ class ASlibHandler(object):
                 raise ValueError("{} not recognised as label-option.".format(label))
         return result
 
-    def _match(self, inst, scen):
+    def _match(self, inst, scen, ext='jpeg'):
         """ Matches an instance in a scenario to the local file path.
-        Highly hard-coded, could be handled in a more adaptive way.
 
         Args:
             inst -- instance as specified in ASlib
@@ -289,26 +294,29 @@ class ASlibHandler(object):
         locInst = self.instances[domain]
         for tup in locInst:
             i, ilocDir, ilocName, ilocExt = tup
-            if domain == "QBF":
-                if ilocName == inst or ilocName == iName+iExt or i == iName: return i
-            elif domain == "CSP":
-                if ilocName+ilocExt == inst: return i
-                if i == inst: return i
-            elif scen == "ASP-POTASSCO":
-                if i == inst: return i
-            elif domain == "SAT":
-                if ilocName == iName+iExt: return i
-                if ilocName+ilocExt == iName+iExt: return i
-            elif domain == "TSP":
-                if iName+".jpeg" == ilocName+ilocExt:
-                    return i
+            if (ilocExt == ext and
+                    iName == ilocName):
+                return i
         return None  # no match
 
-    #def getEndings(self):
-    #    for s in sorted(self.data.keys()):
-    #        print([i for i in self.data[s] if self.localPath(s,i).endswith("txt")])
-    #        endings = [self.data[s][i][0].split(".")[-1] for i in self.data[s]]
-    #        log.debug("Endings for {}: {}".format(s, Counter(endings)))
+    def mutate_scenario(self, old_scen, new_scen, ext=None, startwith=None,
+            exclude_solvers=[]):
+        """ Creates new scenario from a loaded scenario, modifying the data.
+
+        Args:
+            old_scen, new_scen -- strings
+                old_scen from which to create the new_scen.
+            ext -- string
+                if set, rematch instances using only instaces with this extension
+            startwith -- string
+                if set, only use instances starting with this string
+                (recalculate CV-splits...)
+            exclude_solvers -- list(strings) | list(ints)
+                if set, these solvers are excluded (either ints, interpreted as
+                index in lexico-order from 0 or string, name)
+        """
+        raise NotImplemented()
+
 
     ## Scenario scoring/statistics functions
     def evaluate(self, scen, insts, solver_index, mode="par10",
@@ -346,7 +354,7 @@ class ASlibHandler(object):
                     zip(self.get_labels(scen,i,label="status"),rounded_solvers)]))
             else: raise ValueError("{} is not regonized as a parameter for evaluation.".format(mode))
         if len(insts) > notEvaluated: return np.mean(scores), np.std(scores)
-        else: raise Exception("No instances evaluated. Something terribly wrong.")
+        else: raise Exception("No instances evaluated. Something is terribly wrong.")
 
     def BSS(self, scen, inst = None, mode = "par10"):
         """ Returns index for bss, respectively. """
@@ -391,10 +399,10 @@ class ASlibHandler(object):
 
 if __name__ == "__main__":
     log.basicConfig(level = log.DEBUG)
-    scens = ["TestScen", "TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
+    scens = ["TSP", "TestScen", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
     #with open("aslib_loaded.pickle", "rb") as f: a.data = pickle.load(f)
     aslib = ASlibHandler()
     for s in scens:
         aslib.load_scenario(s)
         log.info(aslib.baseline(s))
-    with open("aslib_loaded.pickle", "wb") as f: pickle.dump(aslib.data, f)
+    #with open("aslib_loaded.pickle", "wb") as f: pickle.dump(aslib.data, f)

@@ -100,16 +100,15 @@ class ASlibHandler(object):
         for row in cv_data["data"]:
             self.data[scen][row[0]][2] = row[2]
 
-        # copy all files to their "correct" location according to
-        # aslib-file.
+        # copy all files to their "correct" location according to aslib-file.
         if True:
             self.copy_to_actual_path(scen)
 
-        assert len(self.data[scen])==len(set([a[0] for a in dataset["data"]]))
+        assert len(self.data[scen]) == len(set([a[0] for a in dataset["data"]]))
         return self.get_instances(scen), self.local_paths(scen, self.get_instances(scen))
 
     def _load_all_inst(self, inst_dir=os.path.join(os.getcwd(), "instances/"),
-            accepted=re.compile("^.*\.(?!jpg$|png$)[^.]+$")):
+            accepted=re.compile(r"^.*\.(?!jpg$|png$)[^.]+$")):
         """ Find all instances in the specified instance-folders and load them
         for reference.
 
@@ -175,10 +174,10 @@ class ASlibHandler(object):
         inst = self.get_instances(scen)
         lines = []
         for s in range(len(self.get_solvers(scen))):
-            timeouts = (round(1-self.evaluate(scen,inst,[s for x in
-                inst],"percent_solved")[0], 2))
-            lines.append("Solver {}: {} PAR10 with {} unsuccessful runs.".format(s,
-                self.evaluate(scen,inst,[s for x in inst],"par10"),timeouts))
+            timeouts = (round(1-self.evaluate(scen, inst, [s for x in inst],
+                                              "percent_solved")[0], 2))
+            lines.append("Solver {}: {} PAR10 with {} unsuccessful runs.".format(
+                s, self.evaluate(scen, inst, [s for x in inst], "par10"), timeouts))
         return lines
 
     def copy_to_actual_path(self, scen):
@@ -189,13 +188,8 @@ class ASlibHandler(object):
             log.debug("Make {}".format(basepath))
             os.makedirs(basepath)
         loc_act_insts = zip(self.local_paths(scen, self.get_instances(scen)),
-                self.get_instances(scen))
-        log_first = True
+                            self.get_instances(scen))
         for loc, act in loc_act_insts:
-            if log_first:
-                log.debug("Copy {} to {}".format(loc, os.path.join(basepath,
-                    act)))
-                log_first = False
             shutil.copy(loc, os.path.join(basepath, act))
             self.data[scen][act][0] = os.path.join(basepath, act)
 
@@ -203,10 +197,7 @@ class ASlibHandler(object):
     ## Instance-wise functions:
     def solved_by_any(self, scen, inst):
         """ Returns True, if instance is solved by any solver. """
-        for solver in self.data[scen][inst][1]:
-            if self.data[scen][inst][1][solver][0] == "ok":
-                return True
-        return False
+        return 1 in self.get_labels(scen, inst, label='status')
 
     def local_path(self, scen, inst):
         """ Returns the matched local (physical) path of the instance. """
@@ -216,16 +207,15 @@ class ASlibHandler(object):
         """ Returns the matched local (physical) paths of the instances. """
         return [self.local_path(scen, inst) for inst in insts]
 
-    def get_labels(self, scen, inst, label = "status"):
-        """ Iterate over all solvers (lexico) and return list [0,1,1,0,1]
-            indicating whether the solver solved the instance.
+    def get_labels(self, scen, inst, label="status"):
+        """ Iterate over all solvers (lexico) and requested labels
 
-            Args:
+        Args:
             inst: path to instance as in .txt and aslib's
             label:
-                status = [0,1,0,1]
-                parX = [0.23, 1.52,...]
-                rep = [1,1,1,1]
+                status = [0, 1, 0, 1] -- 1 == 'ok'
+                parX = [0.23, 1.52, 0.92, 1.5]
+                rep = [1, 1, 1, 1]  -- #repetitions
         """
         result = []
         for solver in sorted(self.get_solvers(scen)):
@@ -284,8 +274,7 @@ class ASlibHandler(object):
                 if set, these solvers are excluded (either ints, interpreted as
                 index in lexico-order from 0 or string, name)
         """
-        raise NotImplemented()
-
+        raise NotImplementedError()
 
     ## Scenario scoring/statistics functions
     def evaluate(self, scen, insts, solver_index, mode="par10",
@@ -308,10 +297,10 @@ class ASlibHandler(object):
         """
         assert len(insts) == len(solver_index)
         scores = []
-        notEvaluated = 0
+        not_evaluated = 0
         for i, s in zip(insts, solver_index):
             if ignore_unsolved and not self.solved_by_any(scen, i):
-                notEvaluated += 1
+                not_evaluated += 1
                 continue
 
             if mode[:3] == "par":
@@ -319,14 +308,15 @@ class ASlibHandler(object):
             elif mode == "percent_solved":
                 scores.append(int(self.get_labels(scen, i, label="status")[s]))
             elif mode == "misclassified":
-                # We have the whole range of solver predictions. <0.5 => 0; >0.5 => 1
+                # We have the whole range of solver predictions, e.g. [0.1, 0.3, 0.4]
+                # Round <0.5 => 0; >0.5 => 1
                 rounded_solvers = np.around(s)
-                scores.append(sum([int(a!=b) for a, b in
-                    zip(self.get_labels(scen,i,label="status"),rounded_solvers)]))
-            else: raise ValueError("{} is not regonized as a parameter for evaluation.".format(mode))
-
-        if len(insts) > notEvaluated: return np.mean(scores), np.std(scores)
-        else: raise Exception("No instances evaluated. Something is terribly wrong.")
+                scores.append(sum([int(a != b) for a, b in
+                    zip(self.get_labels(scen,i,label="status"), rounded_solvers)]))
+            else:
+                raise ValueError("{} is not regonized as a parameter for evaluation.".format(mode))
+        assert len(insts) > not_evaluated
+        return np.mean(scores), np.std(scores)
 
     def baseline(self, scen, insts=None, mode="par10"):
         """ Calculates a baseline for scenario.
@@ -363,7 +353,7 @@ class ASlibHandler(object):
             range(num_solvers)] for a in b]
         rand_solv = [a for b in [[i for x in range(len(inst))] for i in
             range(num_solvers)] for a in b]
-        return self.evaluate(self, rand_inst, rand_solv, mode=mode)
+        return self.evaluate(scen, rand_inst, rand_solv, mode=mode)
 
     def get_bss_score(self, scen, inst=None, mode="par10"):
         """ Return score for best single solver. """
@@ -377,7 +367,7 @@ class ASlibHandler(object):
             result[0].extend(fold)
             result[1].extend([b for i in fold])
         # TODO log distribution
-        return self.evaluate(self, result[0], result[1], mode=mode)
+        return self.evaluate(scen, result[0], result[1], mode=mode)
 
     def get_vbs_score(self, scen, inst=None, mode='par10'):
         if inst == None: inst = self.get_instances(scen)
@@ -385,7 +375,7 @@ class ASlibHandler(object):
             chosen = [self.get_labels(scen, i, mode).index(max(self.get_labels(scen, i, mode))) for i in inst]
         else:
             chosen = [self.get_labels(scen, i, mode).index(min(self.get_labels(scen, i, mode))) for i in inst]
-        return self
+        return self.evaluate(scen, inst, chosen, mode=mode)
 
     def solver_distribution(self, solvers):
         """ Given a number of chosen solvers, simply analyze the percentage each
@@ -400,10 +390,10 @@ class ASlibHandler(object):
 
 if __name__ == "__main__":
     log.basicConfig(level = log.DEBUG)
-    scens = ["TSP", "TestScen", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
+    scens = ["TSP"] #, "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
     #with open("aslib_loaded.pickle", "rb") as f: a.data = pickle.load(f)
     aslib = ASlibHandler()
     for s in scens:
         aslib.load_scenario(s)
         log.info(aslib.baseline(s))
-    #with open("aslib_loaded.pickle", "wb") as f: pickle.dump(aslib.data, f)
+    with open("aslib_loaded.pickle", "wb") as f: pickle.dump(aslib.data, f)

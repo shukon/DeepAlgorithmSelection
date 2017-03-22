@@ -12,6 +12,7 @@ import logging as log
 import random
 import pickle
 import shutil
+from recordclass import recordclass
 
 import arff
 import numpy as np
@@ -65,18 +66,18 @@ class ASlibHandler(object):
         self.data[scen] = {}
 
         # Matching instances
-        # row[0] = instance in ASlib, row[1] = num of repitions, row[2] = solver, row[3] = runtime, row[4] = status
+        InstanceEntry = recordclass('InstanceEntry', 'local_path solvers CV_fold')
         notfound = []
-        for row in dataset["data"]:  #  dataset["data"] consists of 5-tuples
-            local_name = self._match(row[0], scen)
-            if local_name:
-                if row[0] not in self.data[scen]: # Instance has not been seen before, simply add (locPath, solverDict)
-                    self.data[scen][row[0]] = [local_name, {}, True, -1]
-                # data[scen][inst][solver-dict][solver] = (status, runtime, repitions) 
+        for row in dataset["data"]:  # row[0] = instance in ASlib, row[1] = #repetions, row[2] = solver, row[3] = runtime, row[4] = status
+            local_path = self._match(row[0], scen)
+            if local_path:
+                if row[0] not in self.data[scen]:
+                    # Instance has not been seen before, simply add (locPath, solverDict, invalid CV-fold)
+                    self.data[scen][row[0]] = InstanceEntry(local_path, {}, 1)
+                # Add to solver-dictionary: (status, runtime, repitions)
                 self.data[scen][row[0]][1][row[2]] = (row[4], row[3], row[1])
             else:
                 notfound.append(row[0])
-        # Remove duplicates
         notfound = list(set(notfound))
 
         log.info("All instances: {}. Solved at least once: {}.".format(
@@ -97,7 +98,7 @@ class ASlibHandler(object):
         cv_path = os.getcwd() + "/" + self.source + scen + "/cv.arff"
         cv_data = arff.load(open(cv_path, "r"))
         for row in cv_data["data"]:
-            self.data[scen][row[0]][3] = row[2]
+            self.data[scen][row[0]][2] = row[2]
 
         # copy all files to their "correct" location according to
         # aslib-file.
@@ -133,8 +134,6 @@ class ASlibHandler(object):
                         ilocName, ilocExt = os.path.splitext(ilocName)
                         instances.append(tuple([relFile, ilocDir, ilocName, ilocExt]))
             log.info("{} instances found in {}".format(len(instances), path))
-            # TODO copy all instances into new folder according to aslib-path
-            # (would help a lot)
             savePath = "tmptxt/debug/{}_debugInst.txt".format(dom)
             log.debug("Saving instance list in {}".format(savePath))
             with open(savePath, "w") as f:
@@ -145,14 +144,14 @@ class ASlibHandler(object):
 
     ## Scenario-wise functions
     def getCVfolds(self, scen):
-        """ Get information of the cross-validation-folds of scenario.
+        """ Get cross-validation-folds of scenario. ONLY WITH 10-FOLD!
 
         Returns:
             CVs -- list of lists of strings with aslib-instance-names
         """
         CVs = []
         for f in range(1, 11):
-            CVs.append([i for i in self.data[scen] if self.data[scen][i][3] == f])
+            CVs.append([i for i in self.data[scen] if self.data[scen][i][2] == f])
         return CVs
 
     def get_instances(self, scen, remove_unsolved=False):
@@ -172,38 +171,7 @@ class ASlibHandler(object):
         inst = random.choice(list(self.data[scen].keys()))
         return self.data[scen][inst][1].keys()
 
-    def baseline(self, scen, insts=None, mode="par10"):
-        """ Calculates a baseline for AS.
-        Returns PAR-1/Par-10 for:
-        Virtual Best Solver (vbs)
-        Best Single Solver (bss)
-        Worst Single Solver (wss)
-        Random Solver (rand)
-        """
-        log.debug("Using {} for baseline-evaluation of {}.".format(mode, scen))
-        baseline = {}
-        # If no instances are specified, get all instances from scenario
-        if insts == None: insts = self.get_instances(scen, remove_unsolved=False)
-        baseline["vbs"] = self.evaluate(scen, insts, self.VBS(scen, insts), mode)
-        baseline["bss"] = self.evaluate(scen, insts, self.BSS(scen, insts), mode)
-        # To calculate random baseline, calculate expectat]
-        num_solvers = len(self.get_solvers(scen))
-        # Get all instances as often as there are solversion
-        randInst = [a for b in [insts for solver in
-            range(num_solvers)] for a in b]
-        # Pick each solver once per instance
-        randSolv = [a for b in [[i for x in range(len(insts))] for i in
-            range(num_solvers)] for a in b]
-        baseline["random"] = self.evaluate(scen, randInst, randSolv)
-        # Get all instances as often as there are solvers
-        goodRandInst = [[i for l in self.get_labels(scen,i,label="status") if l] for i in insts]
-        goodRandSolv = [[l for l in range(len(self.get_solvers(scen))) if self.get_labels(scen,i,label="status")[l]] for i in insts]
-        goodRandInst = [a for b in goodRandInst for a in b]
-        goodRandSolv = [a for b in goodRandSolv for a in b] # write a function goddamn
-        baseline["good-random"] = self.evaluate(scen, goodRandInst, goodRandSolv)
-        return baseline
-
-    def solver_distribution(self, scen):
+    def solver_stats(self, scen):
         inst = self.get_instances(scen)
         lines = []
         for s in range(len(self.get_solvers(scen))):
@@ -225,7 +193,8 @@ class ASlibHandler(object):
         log_first = True
         for loc, act in loc_act_insts:
             if log_first:
-                log.debug("Copy {} to {}".format(loc, act))
+                log.debug("Copy {} to {}".format(loc, os.path.join(basepath,
+                    act)))
                 log_first = False
             shutil.copy(loc, os.path.join(basepath, act))
             self.data[scen][act][0] = os.path.join(basepath, act)
@@ -274,7 +243,7 @@ class ASlibHandler(object):
                 raise ValueError("{} not recognised as label-option.".format(label))
         return result
 
-    def _match(self, inst, scen, ext='jpeg'):
+    def _match(self, inst, scen, ext='.jpeg'):
         """ Matches an instance in a scenario to the local file path.
 
         Args:
@@ -320,7 +289,7 @@ class ASlibHandler(object):
 
     ## Scenario scoring/statistics functions
     def evaluate(self, scen, insts, solver_index, mode="par10",
-                 ignore_unsolved = True):
+                 ignore_unsolved = False):
         """
         Evaluates score depending on mode.
 
@@ -331,10 +300,11 @@ class ASlibHandler(object):
             scen -- name of scenario holding the instances
             insts -- list of instance-names, as they exist in the ASlib-data
             solver_index -- list of equal length, containing the index of the
-                            chosen solver (sorted)
-            mode -- one in [par1, par10, percent_solved, misclassified]
+                            chosen solver (corresponding)
+            mode -- domain: [parX, percent_solved, misclassified]
+            ignore_unsolved -- If True, only consider instances solved at least once
 
-        Returns: PAR-score
+        Returns: averaged score, depending on mode
         """
         assert len(insts) == len(solver_index)
         scores = []
@@ -343,6 +313,7 @@ class ASlibHandler(object):
             if ignore_unsolved and not self.solved_by_any(scen, i):
                 notEvaluated += 1
                 continue
+
             if mode[:3] == "par":
                 scores.append(self.get_labels(scen, i, label=mode)[s])
             elif mode == "percent_solved":
@@ -353,42 +324,72 @@ class ASlibHandler(object):
                 scores.append(sum([int(a!=b) for a, b in
                     zip(self.get_labels(scen,i,label="status"),rounded_solvers)]))
             else: raise ValueError("{} is not regonized as a parameter for evaluation.".format(mode))
+
         if len(insts) > notEvaluated: return np.mean(scores), np.std(scores)
         else: raise Exception("No instances evaluated. Something is terribly wrong.")
 
-    def BSS(self, scen, inst = None, mode = "par10"):
-        """ Returns index for bss, respectively. """
+    def baseline(self, scen, insts=None, mode="par10"):
+        """ Calculates a baseline for scenario.
+
+        Args:
+            insts -- only consider these instances, if None, consider all
+            mode -- metric to calculate baseline for (in parX, percent_solved, misclassified)
+
+        Returns:
+            as dict: VBS, BSS, RAND, GOOD_RAND
+        """
+        log.debug("Using {} for baseline-evaluation of {}.".format(mode, scen))
+        baseline = {}
+        if insts == None: insts = self.get_instances(scen, remove_unsolved=False)
+        baseline["vbs"] = self.get_vbs_score(scen, insts, mode)
+        baseline["bss"] = self.get_bss_score(scen, insts, mode)
+        baseline["random"] = self.get_random_score(scen, insts, mode)
+        baseline["good-random"] = self.get_good_random_score(scen, insts, mode)
+        return baseline
+
+    def get_good_random_score(self, scen, inst=None, mode="par10"):
+        """ Consider only instances-solver pairs that actually get solved. """
+        goodRandInst = [[i for l in self.get_labels(scen,i,label="status") if l] for i in inst]
+        goodRandSolv = [[l for l in range(len(self.get_solvers(scen))) if self.get_labels(scen,i,label="status")[l]] for i in inst]
+        goodRandInst = [a for b in goodRandInst for a in b]
+        goodRandSolv = [a for b in goodRandSolv for a in b] # write a function goddamn
+        return self.evaluate(scen, goodRandInst, goodRandSolv, mode=mode)
+
+    def get_random_score(self, scen, inst=None, mode="par10"):
+        """ Return expected value for random selection by selecting each solver
+        once per instance. """
+        num_solvers = len(self.get_solvers(scen))
+        rand_inst = [a for b in [inst for solver in
+            range(num_solvers)] for a in b]
+        rand_solv = [a for b in [[i for x in range(len(inst))] for i in
+            range(num_solvers)] for a in b]
+        return self.evaluate(self, rand_inst, rand_solv, mode=mode)
+
+    def get_bss_score(self, scen, inst=None, mode="par10"):
+        """ Return score for best single solver. """
         if inst == None: inst = self.get_instances(scen)
         # Evaluate over CVs:
         result = [[],[]]  # inst, solvers
         for fold in self.getCVfolds(scen):
             train            = [i for i in inst if i not in fold]  # Only instance names
             solverTimesTrain = np.array([self.get_labels(scen, i, label="par10") for i in train]).transpose()
-            b = np.argmin(np.sum(solverTimesTrain, axis=1))
+            b = np.argmin(np.sum(solverTimesTrain, axis=1))  # Index of best solver
             result[0].extend(fold)
             result[1].extend([b for i in fold])
-        return result[1]
+        # TODO log distribution
+        return self.evaluate(self, result[0], result[1], mode=mode)
 
-    def VBS(self, scen, inst = None):
+    def get_vbs_score(self, scen, inst=None, mode='par10'):
         if inst == None: inst = self.get_instances(scen)
-        return [self.get_labels(scen, i, "par10").index(min(self.get_labels(scen, i, "par10"))) for i in inst]
+        if mode == 'percent_solved':
+            chosen = [self.get_labels(scen, i, mode).index(max(self.get_labels(scen, i, mode))) for i in inst]
+        else:
+            chosen = [self.get_labels(scen, i, mode).index(min(self.get_labels(scen, i, mode))) for i in inst]
+        return self
 
-    def good_estimate(self, scen, inst = None, mode = "PAR10"):
-        """ TODO What is this function doing? """
-        if inst == None: inst = self.get_instances(scen)
-        # Evaluate over CVs:
-        result = [[],[]]  # inst, solvers
-        for fold in self.getCVfolds(scen):
-            train            = [i for i in inst if i not in fold]  # Only instance names
-            solverStatusTrain = np.array([self.get_labels(scen, i, label="status") for i in train])
-            solverStatusTrain = np.sum(solverStatusTrain, axis=0)
-            b = np.argmax(solverStatusTrain)
-            result[0].extend(fold)
-            result[1].extend([b for i in fold])
-        return result
-
-    def percentageOfSolvers(self, solvers):
-        """ TODO What is this function doing? """
+    def solver_distribution(self, solvers):
+        """ Given a number of chosen solvers, simply analyze the percentage each
+        one takes up in the list."""
         res = ""
         stats = {s:solvers.count(s) for s in set(solvers)}
         print(stats)

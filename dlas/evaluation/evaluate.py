@@ -26,7 +26,7 @@ class Evaluator(object):
         with open("aslib_loaded.pickle", "rb") as f: self.aslib.data = pickle.load(f)
 
     def compare_ids_for_scen(self, scen):
-        """ Prints information available for scenario and states different
+        """ Prints information available for scenario and compares all
         experiments performed on it. """
         path = "results/{}/".format(scen)
         avail_IDs = next(os.walk(path))[1]
@@ -51,17 +51,18 @@ class Evaluator(object):
             list with values as documented in doc-string 
         """
         if ID in ["tsp-inst-name", "tsp-inst-name-cnn"]:
+            # Catching special case
             print(self.inst_name_eval(scen, ID))
-        par10_per_epoch = self._get_par10_per_epoch(scen, ID)
+        par10_per_epoch = self._get_score_per_epoch(scen, ID, 'par10')
         par10 = (min(par10_per_epoch), par10_per_epoch.index(min(par10_per_epoch)))
-        percent_solved_per_epoch = self._get_percent_solved_per_epoch(scen, ID)
+        percent_solved_per_epoch = self._get_score_per_epoch(scen, ID, 'percent_solved')
         percent_solved = (max(percent_solved_per_epoch),
                 percent_solved_per_epoch.index(max(percent_solved_per_epoch)))
-        misclassified_per_epoch = self._get_misclassified_per_epoch(scen, ID)
+        misclassified_per_epoch = self._get_score_per_epoch(scen, ID, 'misclassified')
         misclassified = (min(misclassified_per_epoch), misclassified_per_epoch.index(min(misclassified_per_epoch)))
 
-        return [scen, ID, (round(par10[0][0],2), par10[1]),
-                (round(percent_solved[0][0],4), percent_solved[1]),
+        return [scen, ID, (round(par10[0][0], 2), par10[1]),
+                (round(percent_solved[0][0], 4), percent_solved[1]),
                 (round(misclassified[0][0], 2), misclassified[1])]
 
     def inst_name_eval(self, scen, ID):
@@ -74,45 +75,31 @@ class Evaluator(object):
             pred = self.get_pred(scen, ID, rep=0, epoch=epoch)
             val, test = pred
             inst, pred = val
-            #print(pred)
             pred = [np.argmax(p) for p in pred]
             labels = [np.argmax(l) for l in
-                      labeler.get_label_data(inst).reshape(len(inst),-1)]
+                      labeler.get_label_data(inst).reshape(len(inst), -1)]
             index_misclass = [x[0] for x in list(enumerate(zip(pred, labels))) if
                     x[1][0] != x[1][1]]
             percent.append(1-(len(index_misclass)/float(len(inst))))
             print(len(inst),len(labels))
             if percent[-1] == max(percent):
-                print([x[1] for x in list(enumerate(zip(inst,labels,pred))) if x[0] in index_misclass])
+                print([x[1] for x in list(enumerate(zip(inst, labels, pred))) if x[0] in index_misclass])
                 print(list(enumerate(zip(pred, labels))))
         print("Correctly classified: " + str(max(percent)) + " in epoch " +
                 str(np.argmax(percent)))
 
     def _get_num_epo(self, scen, ID):
-        """Returns number of epochs (retrieved from first repetition)"""
-        config = pickle.load(open(self.base_path.format(scen,ID)+"0/config.p", 'rb'))
+        """Returns number of epochs (as retrieved from first repetition)"""
+        config = pickle.load(open(self.base_path.format(scen,ID) + "0/config.p", 'rb'))
         num_epo = config["nn-numEpochs"] if "nn-numEpochs" in config else config["numEpochs"]
         return int(num_epo)
 
-    def _get_par10_per_epoch(self, scen, ID):
+    def _get_score_per_epoch(self, scen, ID, score="par10"):
+        """ score in ["parX", "percent_solved", "misclassified"] """
         num_epo = self._get_num_epo(scen, ID)
         result = []
         for epoch in range(self._get_num_epo(scen, ID)):
-            result.append(self._get_score_over_reps(scen, ID,"par10","val",epoch))
-        return result
-
-    def _get_percent_solved_per_epoch(self, scen, ID):
-        num_epo = self._get_num_epo(scen, ID)
-        result = []
-        for epoch in range(self._get_num_epo(scen, ID)):
-            result.append(self._get_score_over_reps(scen, ID,"percent_solved","val",epoch))
-        return result
-
-    def _get_misclassified_per_epoch(self, scen, ID):
-        num_epo = self._get_num_epo(scen, ID)
-        result = []
-        for epoch in range(self._get_num_epo(scen, ID)):
-            result.append(self._get_score_over_reps(scen, ID,"misclassified","val",epoch))
+            result.append(self._get_score_over_reps(scen, ID, score, "val", epoch))
         return result
 
     def get_pred(self, scen, ID, rep=0, epoch=-1):
@@ -181,17 +168,19 @@ class Evaluator(object):
             trainLoss.append(np.load(resultPath+rep+"/"+"trainLoss.npz")["trainLoss"])
             valLoss.append(np.load(resultPath  +rep+"/"+"valLoss.npz")["valLoss"])
             testLoss.append(np.load(resultPath +rep+"/"+"testLoss.npz")["testLoss"])
-            print(np.array(trainLoss).shape)
-            print("!!!!!!!!!!!!!!!!!!!")
         return np.mean(trainLoss, axis=0), np.mean(valLoss, axis=0), np.mean(testLoss, axis=0)
 
-    def print_scen_info(self, scen, options=["VBS","BSS","rand","SOA"]):
+    def print_scen_info(self, scen, options=["VBS", "BSS", "rand", "SOA"]):
         line = [scen]
         for o in options:
-            if o == "VBS":    line.append(self.aslib.getVBS(scen)[0])
-            if o == "BSS":  line.append(self.aslib.getBSS(scen)[0])
-            if o == "rand": line.append(self.aslib.getRandom(scen)[0])
-            if o == "SOA":  line.append(self.aslib.getSOA(scen))
+            if o == "VBS":
+                line.append(self.aslib.get_vbs_score(scen)[0])
+            if o == "BSS":
+                line.append(self.aslib.get_bss_score(scen)[0])
+            if o == "rand":
+                line.append(self.aslib.get_random_score(scen)[0])
+            if o == "SOA":
+                line.append(self.aslib.scen_info[scen]['state_of_art'])
         return options, line
 
     def plot(self, scen, ID, train=True, val=True, test=False, output_dir = "."):
@@ -206,9 +195,9 @@ class Evaluator(object):
         valLoss   = self.getLoss(scen, ID)[1]
         valLossMean, valLossStd   = np.mean(valLoss, axis=0), np.std(valLoss, axis=0)
 
-        valPAR10mean, valPAR10std = zip(*self._get_par10_per_epoch(scen, ID))
-        valPercSolvedMean, valPercSolvedStd = zip(*self._get_percent_solved_per_epoch(scen, ID))
-        valMisclassifiedMean, valMisclassifiedStd = zip(*self._get_misclassified_per_epoch(scen, ID))
+        valPAR10mean, valPAR10std = zip(*self._get_score_per_epoch(scen, ID, 'par10'))
+        valPercSolvedMean, valPercSolvedStd = zip(*self._get_score_per_epoch(scen, ID, 'percent_solved'))
+        valMisclassifiedMean, valMisclassifiedStd = zip(*self._get_score_per_epoch(scen, ID, 'misclassified'))
 
         numEpochs = range(len(valLossMean))
 

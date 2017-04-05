@@ -12,7 +12,7 @@ import logging as log
 import random
 import pickle
 import shutil
-from recordclass import recordclass
+#from recordclass import recordclass
 
 import arff
 import numpy as np

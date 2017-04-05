@@ -25,12 +25,10 @@ import warnings
 import theano
 import theano.tensor as T
 import lasagne
+import nolearn
 from PIL import Image
 
 from dlas.aslib.aslib_handler import ASlibHandler
-from dlas.neural_net.mnn import build_mnn
-from dlas.neural_net.cnn import build_cnn
-from dlas.neural_net.cnn1d import build_cnn1d
 
 class AdjustVariable(object):
     """ Helper class for update of learning rate and momentum.
@@ -78,8 +76,8 @@ class Network:
         Constructor. Needs config and aslib.
         """
         self.config = config
-        if config["nn-model"] in ["cnn", "mnn", "cnn1d"]:
-            self.network = self.buildTheanoFunctions()
+        self.network = self.buildTheanoFunctions()
+        self.log = log.getLogger("Network")
         # Load aslib if provided.
         if aslib:
             self.aslib = aslib
@@ -121,34 +119,40 @@ class Network:
     # more functions to better separate the code, but it wouldn't make it any
     # easier to read.
 
+    def get_class(self, kls):
+        parts = kls.split('.')
+        module = ".".join(parts[:-1])
+        m = __import__( module )
+        for comp in parts[1:]:
+            m = getattr(m, comp)
+        return m
+
     def buildTheanoFunctions(self):
         # Prepare Theano variables for inputs and targets
         self.input_var, self.target_var = T.tensor4("inputs"), T.matrix("targets")
 
         # Build network
         try:
-            self.network = self.get_class("dlas.neural_net."+self.config["nn-model"]+".build_network")(self.config,
-                    self.input_var)
+            network = self.get_class("dlas.neural_net."+self.config["nn-model"]+".build_network")(self)
         except ImportError:
-            self.log.error("No class with name {} found. Do file and class have "
-                           "the same name?".format(image_mode))
-        if   self.config["nn-model"] == "cnn": network = build_cnn(self.config, self.input_var)
-        elif self.config["nn-model"] == "mnn": network = build_mnn(self.config, self.input_var)
-        elif self.config["nn-model"] == "cnn1D":
-            self.input_var = T.tensor3("inputs")
-            network = build_cnn1d(self.config, self.input_var)
-        else: raise ValueError("{} not a modelchoice!".format(self.config["model"]))
+            self.log.error("No class with name {} found.".format(config["nn-model"]))
 
+        # Update learning rate and momentum to be shared variables
+        learning_rate = self.config["nn-learningrate-start"]
+        momentum = self.config["nn-momentum-start"]
+        network.update_learning_rate = theano.shared(float32(learning_rate)),
+        network.update_momentum = theano.shared(float32(momentum)),
         # We adjust learning rate and momentum:
-        if not self.config["nn-update-method"] in ["adam", "adagrad"]:
-            network.on_epoch_finished=[
-              AdjustVariable('update_learning_rate',
-                                start=self.config["nn-learningrate-start"],
-                                stop=self.config["nn-learningrate-stop"]),
-              AdjustVariable('update_momentum',
-                                start=self.config["nn-momentum-start"],
-                                stop=self.config["nn-momentum-stop"]),
-            ]
+        if self.config["nn-update-learning-rate"]:
+            network.on_epoch_finished.append(
+                AdjustVariable('update_learning_rate',
+                               start=self.config["nn-learningrate-start"],
+                               stop=self.config["nn-learningrate-stop"]))
+        if self.config["nn-update-momentum"]:
+            network.on_epoch_finished.append(
+                AdjustVariable('update_momentum',
+                               start=self.config["nn-momentum-start"],
+                               stop=self.config["nn-momentum-stop"]))
 
         # Create a loss expression for training and validation/testing.
         # The crucial difference here is that we do a deterministic
@@ -180,13 +184,18 @@ class Network:
         # parameters at each training step.
         self.params = lasagne.layers.get_all_params(network, trainable=True)
         update_meth = self.config["nn-update-method"]
-        learningRate, momentum = self.config["nn-learningrate-start"], self.config["nn-momentum-start"]
-        if update_meth == "sgd": self.updates = lasagne.updates.sgd(self.loss, self.params, learningRate)
-        elif update_meth == "momentum": self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learningRate, momentum=0.9)
-        elif update_meth == "nesterov": self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learningRate, momentum=0.9)
-        elif update_meth == "adagrad"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
-        elif update_meth == "adam"    : self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learningRate)
-        else: raise ValueError("{} not a legal option for update-method in neural network.".format(update_meth))
+        if update_meth == "sgd":
+            self.updates = lasagne.updates.sgd(self.loss, self.params, learning_rate)
+        elif update_meth == "momentum":
+            self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learning_rate, momentum)
+        elif update_meth == "nesterov":
+            self.updates = lasagne.updates.nesterov_momentum(self.loss, self.params, learning_rate, momentum)
+        elif update_meth == "adagrad":
+            self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learning_rate)
+        elif update_meth == "adam":
+            self.updates = lasagne.updates.adam(self.loss, self.params, learning_rate=learning_rate)
+        else:
+            raise ValueError("{} not a legal option for update-method in neural network.".format(update_meth))
 
         # Compile a function performing a training step on a mini-batch (by giving
         # the updates dictionary) and returning the corresponding training loss:
@@ -204,13 +213,16 @@ class Network:
         return network
 
 
-    def fit(self, X, y, inst, save=False):
+    def fit(self, X, y, inst, save=False, cv=-1):
         """
         Functions that fits the neural network according to the specifications
         described in the config-dictionary.
-        images = [[train], [val], [test]]
-        labels = [[train], [val], [test]]
-        inst   = [[train], [val], [test]] """
+
+        X: images   = [[train], [val], [test]]
+        y: labels   = [[train], [val], [test]]
+        inst: names = [[train], [val], [test]]
+        save: save network's weights
+        """
         log.info("Fitting neural network training set for scenario {}, {} epochs.".format(
                      self.config ["scen"], self.config["nn-numEpochs"]))
         X, X_val, X_test = X
@@ -230,6 +242,7 @@ class Network:
         useValidation = self.config.use_validation
 
         if self.config["nn-model"] == "cnn1d":
+            log.info("Reshaping image-data to be one-dimensional.")
             X = X.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
             X_val = X_val.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
             X_test = X_test.reshape(-1, 1, self.config["imageDim"]*self.config["imageDim"])
@@ -302,22 +315,18 @@ class Network:
             # Skip really bad settings right away
             if math.isnan(trainloss[-1]) or (useValidation and math.isnan(valloss[-1])):
                 log.info("Not training, error is nan.")
-                #return False
+                return False
 
             # Calc PAR10
             #if self.aslib:
             #    par10 = aslib.evaluate(self.config["scen"],inst[2],[np.argmax(x) for x in valpred[-1]])
 
-            #for x in self.network.__dict__:
-            #    print(str(x)+" "+repr(getattr(self.network, x)))
             # Then we print the results for this epoch:
             res = "{:03d} of {}".format(epoch+1, numEpochs)
             res += (13 - len(res))*" "
             res += "{:.5}s".format(timesPerEpoch[-1])
             res += (22 - len(res))*" "
             res += "{:.12}".format(train_err)
-            #res += "{}".format(self.network.update_learning_rate)
-            #res += "{:.12}".format(self.network.update_momentum)
             if useValidation:
                 res += (36 - len(res))*" "
                 res += " {:.12}".format(val_err)
@@ -326,24 +335,32 @@ class Network:
             log.info(res)
 
         # Saving the network weights
-        #if save:
-        #    path = self.config["modelPath"].format(scen, cv[0], cv[1], self.config["repetition"])
-        #    log.info("Save network in {}".format(path))
-        #    np.savez(path, *lasagne.layers.get_all_param_values(self.network))
-
-        # VISUALIZE
-        scen = self.config["scen"]
-        #for instance in zip(inst[1], X_val):
-        #    for solver in self.aslib.get_solvers(scen):
-        #        # Save hotmap
-        #        hotmap = lasagne.visualize.occlusion_heatmap(self, instance[1])
-        #        im = Image.fromarray(hotmap)
-        #        im.save(self.aslib.local_path(scen,
-        #            instance[0])+("-".join([solver,"hotmap.jpg"])))
-
-
+        if save:
+            path = save  # os.path.join(self.config.result_path, "nn-model_", cv, self.config.rep)
+            log.info("Save network in {}".format(path))
+            np.savez(path, *lasagne.layers.get_all_param_values(self.network))
 
         return timesPerEpoch, timesToPredict, trainloss, valloss, testloss, trainpred, valpred, testpred, valAcc, testAcc
+
+    def load_and_visualize(self, cv, val_inst):
+        for cv in range(10):
+            log.info("Load and visualize cv-fold {}".format(cv))
+            
+            path = os.path.join(self.config.result_path, "nn-model_{}".format(cv))
+            with np.load(path+'.npz') as f:
+                param_values = [f['arr_%d' % i] for i in range(len(f.files))]
+            lasagne.layers.set_all_param_values(self.network, param_values)
+
+            # VISUALIZE
+            scen = self.config.scen
+            for instance in val_inst:
+                instance = (instance,
+                for solver in self.aslib.get_solvers(scen):
+                    # Save hotmap
+                    hotmap = nolearn.lasagne.visualize.occlusion_heatmap(self, instance[1])
+                    im = Image.fromarray(hotmap)
+                    im.save(self.aslib.local_path(scen,
+                        instance[0])+("-".join([solver,"hotmap.jpg"])))
 
     def get_params(self, deep=True):
         return {"config": self.config}
@@ -358,9 +375,6 @@ class Network:
         return res
 
         # And load them again later on like this:
-        # with np.load('model.npz') as f:
-        #     param_values = [f['arr_%d' % i] for i in range(len(f.files))]
-        # lasagne.layers.set_all_param_values(network, param_values)
 
 
 

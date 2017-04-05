@@ -11,6 +11,7 @@ from scipy.stats import f_oneway
 
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.data_prep.TSPLabelClass import TSPLabelClass
+from dlas.neural_net.network import Network
 
 class Evaluator(object):
     """ Evaluates experiments that have been performed and produces some nice
@@ -88,10 +89,16 @@ class Evaluator(object):
         print("Correctly classified: " + str(max(percent)) + " in epoch " +
                 str(np.argmax(percent)))
 
+    def _get_config(self, scen, ID):
+        """Returns config (as retrieved from first repetition)"""
+        config = pickle.load(open(self.base_path.format(scen,ID) + "0/config.p", 'rb'))
+        return config
+
     def _get_num_epo(self, scen, ID):
         """Returns number of epochs (as retrieved from first repetition)"""
         config = pickle.load(open(self.base_path.format(scen,ID) + "0/config.p", 'rb'))
-        num_epo = config["nn-numEpochs"] if "nn-numEpochs" in config else config["numEpochs"]
+        log.basicConfig(level='DEBUG')
+        num_epo = config["nn-numEpochs"] if "nn-numEpochs" in config.config else config["numEpochs"]
         return int(num_epo)
 
     def _get_score_per_epoch(self, scen, ID, score="par10"):
@@ -244,6 +251,16 @@ class Evaluator(object):
         with PdfPages(os.path.join(output_dir, scen+"_"+ID+"_plot.pdf")) as pdf:
             pdf.savefig()
         return plt
+
+    def occlude(self, scen, ID):
+        config = self._get_config(scen, ID)  # get first repetition config
+        valInst =  np.load(config.result_path+"instInFoldVal.npz")["valFolds"]
+        print(valInst)
+        print(len(valInst))
+        for cv, val in enumerate(valInst):
+            net = Network(config)
+            save_network = os.path.join(config.result_path, "nn-model_{}".format(cv))
+            net.load_and_visualize(cv, val)
 
     def permutationTest(self, *args):
         if len(args)==2 and len(args[0]) > 0 and len(args[1]) > 0: data1, data2 = args

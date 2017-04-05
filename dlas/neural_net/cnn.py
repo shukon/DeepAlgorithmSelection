@@ -1,6 +1,6 @@
 import lasagne
 
-def build_cnn(config, input_var=None):
+def build_network(self):
     # CNN as described in Loreggia et al (2016)
     # Consisting of:
     # Input layer 128x128
@@ -12,12 +12,12 @@ def build_cnn(config, input_var=None):
     # Output layer, N solvers
 
     # Input layer, as usual:
-    dim = config["image-dim"]
+    dim = self.config["image-dim"]
     network = lasagne.layers.InputLayer(shape=(None, 1, dim, dim),
-                                        input_var=input_var)
+                                        input_var=self.input_var)
 
-    conv1 = config["nn-conv-size-one"]
-    conv2 = config["nn-conv-size-two"]
+    conv1 = self.config["nn-conv-size-one"]
+    conv2 = self.config["nn-conv-size-two"]
     # Convolutional layer with 32 kernels of size 3x3.
     network = lasagne.layers.Conv2DLayer(
             network, num_filters=32, filter_size=(conv1, conv1),
@@ -52,20 +52,16 @@ def build_cnn(config, input_var=None):
             nonlinearity=lasagne.nonlinearities.rectify)
 
     # And, finally, the 10-unit output layer with 50% dropout on its inputs:
-    if config["nn-output-nonlinearity"] == "sigmoid":
+    if self.config["nn-output-nonlinearity"] == "sigmoid":
         conf_nonlinearity=lasagne.nonlinearities.sigmoid
-    elif config["nn-output-nonlinearity"] == "softmax":
+    elif self.config["nn-output-nonlinearity"] == "softmax":
         conf_nonlinearity=lasagne.nonlinearities.softmax
     else: raise ValueError()
 
     network = lasagne.layers.DenseLayer(
-            network, num_units=config.num_labels,
+            network, num_units=self.config.num_labels,
             nonlinearity = conf_nonlinearity)
 
     # Set regresssion to true for multi-label-classification
-    network.regression = config["nn-regression"]
-
-    #network.update_learning_rate=theano.shared(float32(self.config["nn-learningrate-start"]))
-    #network.update_momentum=theano.shared(float32(self.config["nn-momentum-start"]))
-
+    network.regression = self.config["nn-regression"]
     return network

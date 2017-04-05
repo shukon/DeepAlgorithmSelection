@@ -150,7 +150,10 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
                             len(folds), config.use_validation, config.rep))
         net = Network(config)
         # Is this really the best method? ...
-        result = net.fit([X_train, X_val, X_test], [y_train, y_val, y_test], [inst_train, inst_val, inst_test])
+        cv = folds.index(test_fold)
+        save_network = os.path.join(config.result_path, "nn-model_{}".format(cv))
+        result = net.fit([X_train, X_val, X_test], [y_train, y_val, y_test],
+                [inst_train, inst_val, inst_test], save=save_network, cv=cv)
         # PE=per epoch,TP=times to predict,L=loss,P=prediction,A=accuracy
         if result: timesPE, timesTP, trL, vaL, teL, trP, vaP, teP, vaA, teA = result
         else:
@@ -211,6 +214,7 @@ if __name__ == "__main__":
         if ID:
             print(eva.print_table(scen, ID))
             eva.plot(scen, ID)
+            #eva.occlude(scen, ID)
         else:
             for element in eva.compare_ids_for_scen(scen):
                 print(element)

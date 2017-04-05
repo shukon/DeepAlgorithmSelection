@@ -126,6 +126,12 @@ class Network:
         self.input_var, self.target_var = T.tensor4("inputs"), T.matrix("targets")
 
         # Build network
+        try:
+            self.network = self.get_class("dlas.neural_net."+self.config["nn-model"]+".build_network")(self.config,
+                    self.input_var)
+        except ImportError:
+            self.log.error("No class with name {} found. Do file and class have "
+                           "the same name?".format(image_mode))
         if   self.config["nn-model"] == "cnn": network = build_cnn(self.config, self.input_var)
         elif self.config["nn-model"] == "mnn": network = build_mnn(self.config, self.input_var)
         elif self.config["nn-model"] == "cnn1D":

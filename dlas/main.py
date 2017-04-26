@@ -18,8 +18,6 @@ from dlas.evaluation.evaluate import Evaluator
 log.basicConfig(level=log.DEBUG)
 
 ASLIB = ASlibHandler()
-with open("aslib_loaded.pickle", "rb") as f:
-    ASLIB.data = pickle.load(f)
 
 def prep(scen, config, instance_path, recalculate = False):
     """
@@ -44,6 +42,8 @@ def prep(scen, config, instance_path, recalculate = False):
         X    : image-data, format in (#inst,#channels,dim1,dim2)
         y    : label-data
     """
+    # Load scenario-data
+    ASLIB.load_scenario(scen)
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:
     inst = ASLIB.get_instances(scen, remove_unsolved=False)
     preparer = DataPreparer(config, ASLIB, instance_path, "images/", "labels/")
@@ -63,6 +63,9 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
     Run experiment (that is defined by name through scen and ID), which is
     further defined in config.
     """
+    # Load scenario-data
+    ASLIB.load_scenario(scen)
+
     log.basicConfig(level=log.DEBUG)
     log.debug(config.config)
 

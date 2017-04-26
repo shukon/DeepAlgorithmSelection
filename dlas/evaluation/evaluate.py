@@ -23,7 +23,9 @@ class Evaluator(object):
         self.base_path = "results/{}/{}/"
 
         self.aslib = ASlibHandler()
-        with open("aslib_loaded.pickle", "rb") as f: self.aslib.data = pickle.load(f)
+        if os.path.exists("aslib_loaded.pickle"):
+            with open("aslib_loaded.pickle", "rb") as f:
+                self.aslib.data = pickle.load(f)
 
     def compare_ids_for_scen(self, scen):
         """ Prints information available for scenario and compares all
@@ -240,7 +242,7 @@ class Evaluator(object):
         ax31.set_ylabel('Misclassified', color='r')
 
         fig.tight_layout()
-        #plt.show()
+        plt.show()
         with PdfPages(os.path.join(output_dir, scen+"_"+ID+"_plot.pdf")) as pdf:
             pdf.savefig()
         return plt

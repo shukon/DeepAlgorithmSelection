@@ -12,10 +12,10 @@ import logging as log
 import random
 import pickle
 import shutil
-from recordclass import recordclass
 
 import arff
 import numpy as np
+from recordclass import recordclass
 
 class ASlibHandler(object):
     """
@@ -40,7 +40,8 @@ class ASlibHandler(object):
                 "TSP-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600,"state_of_art": None, "bss": 0, "vbs": 0},
                 "TSP-MORPHED-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
                 "TSP-NETGEN-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-		"TSP-RUE-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0}} 
+		"TSP-RUE-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0}
+                }
 
     def __init__(self, path="ASlib/", instance_path="instances/"):
         """ Initialize an ASlibHandler.
@@ -52,16 +53,21 @@ class ASlibHandler(object):
                 Path to instances (or where they should be after matching)"""
         self.source = path
         self.instance_path = instance_path
+        if os.path.exists("aslib_loaded.pickle"):
+            with open("aslib_loaded.pickle", "rb") as f:
+                self.data = pickle.load(f)
 
-    def load_scenario(self, scen):
+    def load_scenario(self, scen, match=None):
         """
         Load scenario data and attempt to match instances in scenario to local
         instance-files.
-        """
-        # Find all instances in specified instance-directories.
-        if not self.instances:
-            self._load_all_inst()
 
+        Args:
+            scen -- string
+                Scenario-name
+            match -- dict
+                Dictionary with aslib- -> local-instances
+        """
         log.info("Loading {} from \"{}\" into memory.".format(scen, self.source))
         path = os.path.join(os.getcwd(), self.source, scen, "algorithm_runs.arff")
         log.debug("Using {}".format(path))
@@ -72,32 +78,25 @@ class ASlibHandler(object):
 
         # Matching instances
         InstanceEntry = recordclass('InstanceEntry', 'local_path solvers CV_fold')
-        notfound = []
         for row in dataset["data"]:  # row[0] = instance in ASlib, row[1] = #repetions, row[2] = solver, row[3] = runtime, row[4] = status
-            local_path = self._match(row[0], scen)
-            if local_path:
-                if row[0] not in self.data[scen]:
-                    # Instance has not been seen before, simply add (locPath, solverDict, invalid CV-fold)
-                    self.data[scen][row[0]] = InstanceEntry(local_path, {}, 1)
-                # Add to solver-dictionary: (status, runtime, repitions)
-                self.data[scen][row[0]][1][row[2]] = (row[4], row[3], row[1])
+            if match:
+                local_path = match[row[0]]
             else:
-                notfound.append(row[0])
-        notfound = list(set(notfound))
+                local_path = os.path.join(self.instance_path, scen, row[0])
+            # Check if instance exists
+            if not os.path.exists(local_path):
+                raise FileNotFoundError("ASlib could not locate instance {} from "
+                                        "scenario {} in given path {}.".format(
+                                            row[0], scen, local_path))
+            if row[0] not in self.data[scen]:
+                # Instance has not been seen before, simply add (locPath, solverDict, invalid CV-fold)
+                self.data[scen][row[0]] = InstanceEntry(local_path, {}, 1)
+            # Add to solver-dictionary: (status, runtime, repitions)
+            self.data[scen][row[0]][1][row[2]] = (row[4], row[3], row[1])
 
         log.info("All instances: {}. Solved at least once: {}.".format(
             len(self.data[scen]),
             len([a for a in self.data[scen] if self.solved_by_any(scen,a)])))
-
-        # Report problems
-        if len(notfound) > 0:
-            error_path = "tmptxt/debug/notFoundDebug.txt"
-            log.warning("Only matched {} of {} instances in {}. Saving not found files in \"{}\".".format(
-                len(self.data[scen]), len(set([a[0] for a in dataset["data"]])), scen, error_path))
-            with open(error_path, "w") as f:
-                for n in notfound: f.write(n+"\n")
-        else:
-            log.info("All {} in {} matched.".format(len(set([a[0] for a in dataset["data"]])), scen))
 
         # Mark Cross-Validation-folds
         cv_path = os.getcwd() + "/" + self.source + scen + "/cv.arff"
@@ -105,46 +104,8 @@ class ASlibHandler(object):
         for row in cv_data["data"]:
             self.data[scen][row[0]][2] = row[2]
 
-        # copy all files to their "correct" location according to aslib-file.
-        if True:
-            self.copy_to_actual_path(scen)
-
         assert len(self.data[scen]) == len(set([a[0] for a in dataset["data"]]))
         return self.get_instances(scen), self.local_paths(scen, self.get_instances(scen))
-
-    def _load_all_inst(self, inst_dir=os.path.join(os.getcwd(), "instances/"),
-            accepted=re.compile(r"^.*\.(?!jpg$|png$)[^.]+$")):
-        """ Find all instances in the specified instance-folders and load them
-        for reference.
-
-        Args:
-            inst_dir : str, directory
-                -- defines the path to the directory containing the instances
-            accepted : compiled regular expression
-                -- exclude unmatching files (i.e. jpgs or pdfs)
-         """
-        domains = list(set([self.scen_info[scen]['d'] for scen in self.scen_info]))
-        # Loop over all domains
-        for dom in domains:
-            instances = []
-            path = os.path.join(inst_dir, dom)
-            cwd = os.path.abspath(os.getcwd())
-            for root, dirs, files in os.walk(path):
-                for f in files:
-                    if accepted.match(f):
-                        relFile = os.path.join(os.path.relpath(root, cwd), f) # save relative path
-                        # Split up and save as 4-tuple (whole name, dir, name, ext)
-                        ilocDir, ilocName = os.path.split(relFile)
-                        ilocName, ilocExt = os.path.splitext(ilocName)
-                        instances.append(tuple([relFile, ilocDir, ilocName, ilocExt]))
-            log.info("{} instances found in {}".format(len(instances), path))
-            savePath = "tmptxt/debug/{}_debugInst.txt".format(dom)
-            log.debug("Saving instance list in {}".format(savePath))
-            with open(savePath, "w") as f:
-                for i in instances: f.write(i[0]+"\n")
-            if dom in self.instances: self.instances[dom].extend(instances)
-            else: self.instances[dom] = instances
-
 
     ## Scenario-wise functions
     def getCVfolds(self, scen):
@@ -155,7 +116,7 @@ class ASlibHandler(object):
         """
         CVs = []
         for f in range(1, 11):
-            CVs.append([i for i in self.data[scen] if self.data[scen][i][2] == f])
+            CVs.append([i for i in self.data[scen] if self.data[scen][i][1] == f])
         return CVs
 
     def get_instances(self, scen, remove_unsolved=False):
@@ -237,31 +198,6 @@ class ASlibHandler(object):
             else:
                 raise ValueError("{} not recognised as label-option.".format(label))
         return result
-
-    def _match(self, inst, scen, ext='.jpeg'):
-        """ Matches an instance in a scenario to the local file path.
-
-        Args:
-            inst -- instance as specified in ASlib
-            scen -- scenario
-
-        Returns:
-            local path, if found.
-            If no match, returns None.
-        """
-        domain = self.scen_info[scen]["d"]
-        # Split up instance for matching
-        iDir, iName = os.path.split(inst)
-        iName,iExt = os.path.splitext(iName)
-        # locInst : physical (local) instance path <=> inst : aslib-path
-        # locInst as 4-tuple (whole path, dir, name, ext):
-        locInst = self.instances[domain]
-        for tup in locInst:
-            i, ilocDir, ilocName, ilocExt = tup
-            if (ilocExt == ext and
-                    iName == ilocName):
-                return i
-        return None  # no match
 
     def mutate_scenario(self, old_scen, new_scen, ext=None, startwith=None,
             exclude_solvers=[]):

@@ -85,7 +85,7 @@ class Network:
             self.aslib = aslib
         else:
             self.aslib = ASlibHandler()
-            with open("aslib_loaded.pickle", "rb") as f: self.aslib.data = pickle.load(f)
+
 
     # ############################# Batch iterator ###############################
     # This is just a simple helper function iterating over training data in

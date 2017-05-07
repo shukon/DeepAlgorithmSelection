@@ -86,7 +86,9 @@ class ASlibHandler(object):
                 local_path = os.path.join(self.instance_path, scen, row[0])
             # Check if instance exists
             if not os.path.exists(local_path):
-                raise FileNotFoundError("ASlib could not locate instance {} from "
+                local_path = local_path+".jpeg"
+                if not os.path.exists(local_path):
+                    raise FileNotFoundError("ASlib could not locate instance {} from "
                                         "scenario {} in given path {}.".format(
                                             row[0], scen, local_path))
             if row[0] not in self.data[scen]:

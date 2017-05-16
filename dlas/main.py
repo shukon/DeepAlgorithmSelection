@@ -44,9 +44,9 @@ def prep(scen, config, instance_path, recalculate = False):
     """
     # Load scenario-data
     if config["image-mode"] == "TextToImage":
-        ASLIB.load_scenario(scen, "tsp")
+        ASLIB.load_scenario(scen, extension="tsp")
     elif config["image-mode"] == "FromImage":
-        ASLIB.load_scenario(scen, "jpeg")
+        ASLIB.load_scenario(scen, extension="jpeg")
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:
     inst = ASLIB.get_instances(scen, remove_unsolved=False)
     preparer = DataPreparer(config, ASLIB, instance_path, "images/", "labels/")
@@ -200,10 +200,26 @@ if __name__ == "__main__":
     log.addLevelName(log.WARNING, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.WARNING))  # Color warnings
     log.addLevelName(log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
 
-    scen = sys.argv[2] if len(sys.argv) > 2 else None
-    ID = sys.argv[3] if len(sys.argv) > 3 else None
     eva = Evaluator()
-    if sys.argv[1] == "exp":
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Process input to dlas-cmdline.')
+    parser.add_argument('--mode', action='store', default='exp',
+                        help='Specifies what action should be performed.',
+                        choices=['exp', 'eval', 'prep', 'stat'])
+    parser.add_argument('--scen', action='store', default='TSP',
+                        help='Defines the scenario to use.')
+    parser.add_argument('--ID', action='store', default='tsp-default',
+                        help='Defines experiment ID, by filename in'
+                             '\"experiments/\" (without .txt).')
+
+    args = parser.parse_args()
+    args = vars(args)
+    scen = args["scen"]
+    ID = args["ID"]
+    mode = args["mode"]
+    if mode == "exp":
         if scen == "all":
             scenarios = ["TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
         else:
@@ -222,13 +238,14 @@ if __name__ == "__main__":
                 print(element)
     elif sys.argv[1] == "stat":
         # Print stats of scenario
+        ASLIB.load_scenario(scen)
         print("Scenario-statistics for {}:".format(scen))
         print("{} instances, {} solvable.".format(
             len(ASLIB.get_instances(scen, remove_unsolved=False)),
             len(ASLIB.get_instances(scen, remove_unsolved=True))))
         print("Virtual Best Solver: {}".format(ASLIB.baseline(scen)["vbs"]))
-        for solver in ASLIB.solver_distribution(scen):
-            log.info("Solver-Dist.: {}".format(solver))
+        chosen = [ASLIB.get_labels(scen, i, "par10").index(min(ASLIB.get_labels(scen, i, "par10"))) for i in ASLIB.get_instances(scen)]
+        print(ASLIB.solver_distribution(chosen, scen))
     elif sys.argv[1] == "prep":
         # Prepare image and label
         c = Config(scen, ID)

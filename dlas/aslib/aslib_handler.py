@@ -119,7 +119,7 @@ class ASlibHandler(object):
         """
         CVs = []
         for f in range(1, 11):
-            CVs.append([i for i in self.data[scen] if self.data[scen][i][1] == f])
+            CVs.append([i for i in self.data[scen] if self.data[scen][i][2] == f])
         return CVs
 
     def get_instances(self, scen, remove_unsolved=False):
@@ -137,7 +137,7 @@ class ASlibHandler(object):
         """ Return a list with solvers used in (a random instance of) scenario.
         """
         inst = random.choice(list(self.data[scen].keys()))
-        return self.data[scen][inst][1].keys()
+        return sorted(self.data[scen][inst][1].keys())
 
     def solver_stats(self, scen):
         inst = self.get_instances(scen)
@@ -344,15 +344,26 @@ class ASlibHandler(object):
             chosen = [self.get_labels(scen, i, mode).index(min(self.get_labels(scen, i, mode))) for i in inst]
         return self.evaluate(scen, inst, chosen, mode=mode)
 
-    def solver_distribution(self, solvers):
-        """ Given a number of chosen solvers, simply analyze the percentage each
-        one takes up in the list."""
+    def solver_distribution(self, solvers, scen=None):
+        """
+        Parameters
+        ----------
+        solvers : list<int>
+            list of chosen solvers
+
+        Returns
+        -------
+        distribution : string
+            distribution of solvers in list
+        """
         res = ""
         stats = {s:solvers.count(s) for s in set(solvers)}
-        print(stats)
+        log.debug(stats)
         total = sum(x[1] for x in stats.items())
         for k,v in reversed(sorted(stats.items(), key=lambda x: x[1])):
-            res += "{}: {} ({}%)|".format(k,v,round(v/float(total)*100,1))
+            if scen: s = self.get_solvers(scen)[k]
+            else: s = k
+            res += "{}: {} ({}%)|".format(s,v,round(v/float(total)*100,1))
         return res
 
 if __name__ == "__main__":

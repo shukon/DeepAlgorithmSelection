@@ -43,7 +43,7 @@ class FromImage(ImagePrep):
                 self.log.warning("NAN: {}".format(i))
         return data, times
 
-    def _convert(self, img_path, save=True):
+    def _convert(self, img_path, save=False):
         """
         Converts instance-image specified in img_path and returns modified
         image, conversion time and - if save - saves the image.

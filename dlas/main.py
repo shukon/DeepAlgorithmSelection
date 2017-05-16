@@ -43,7 +43,10 @@ def prep(scen, config, instance_path, recalculate = False):
         y    : label-data
     """
     # Load scenario-data
-    ASLIB.load_scenario(scen)
+    if config["image-mode"] == "TextToImage":
+        ASLIB.load_scenario(scen, "tsp")
+    elif config["image-mode"] == "FromImage":
+        ASLIB.load_scenario(scen, "jpeg")
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:
     inst = ASLIB.get_instances(scen, remove_unsolved=False)
     preparer = DataPreparer(config, ASLIB, instance_path, "images/", "labels/")
@@ -223,7 +226,7 @@ if __name__ == "__main__":
         print("{} instances, {} solvable.".format(
             len(ASLIB.get_instances(scen, remove_unsolved=False)),
             len(ASLIB.get_instances(scen, remove_unsolved=True))))
-        print("Virtual Best Solver: {}".format(ASLIB.VBS(scen)))
+        print("Virtual Best Solver: {}".format(ASLIB.baseline(scen)["vbs"]))
         for solver in ASLIB.solver_distribution(scen):
             log.info("Solver-Dist.: {}".format(solver))
     elif sys.argv[1] == "prep":

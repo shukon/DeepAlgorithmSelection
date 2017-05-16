@@ -32,6 +32,7 @@ class ASlibHandler(object):
     data = {}    # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
     instances = {}
     times = {}
+    file_exts = {"TSP":"tsp", "Image":"jpeg"}
     scen_info = {
                 "TSP"          : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 16.97333, "vbs": 10.80658},
                 "TSP-MORPHED"  : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
@@ -58,7 +59,7 @@ class ASlibHandler(object):
             with open("aslib_loaded.pickle", "rb") as f:
                 self.data = pickle.load(f)
 
-    def load_scenario(self, scen, match=None):
+    def load_scenario(self, scen, match=None, extension="jpeg"):
         """
         Load scenario data and attempt to match instances in scenario to local
         instance-files.
@@ -85,12 +86,11 @@ class ASlibHandler(object):
             else:
                 local_path = os.path.join(self.instance_path, scen, row[0])
             # Check if instance exists
+            local_path = ".".join([local_path, extension])
             if not os.path.exists(local_path):
-                local_path = local_path+".jpeg"
-                if not os.path.exists(local_path):
-                    raise FileNotFoundError("ASlib could not locate instance {} from "
+                raise FileNotFoundError("ASlib could not locate instance {} from "
                                         "scenario {} in given path {}.".format(
-                                            row[0], scen, local_path))
+                                        row[0], scen, local_path))
             if row[0] not in self.data[scen]:
                 # Instance has not been seen before, simply add (locPath, solverDict, invalid CV-fold)
                 self.data[scen][row[0]] = InstanceEntry(local_path, {}, 1)
@@ -218,7 +218,30 @@ class ASlibHandler(object):
                 if set, these solvers are excluded (either ints, interpreted as
                 index in lexico-order from 0 or string, name)
         """
-        raise NotImplementedError()
+
+        if new_scen in self.data:
+            raise NameError("{} already used as scenario-name".format(new_scen))
+
+        # Copy scenario
+        self.data[new_scen] = self.data[old_scen].deepcopy()
+
+        # Exclude solvers
+        for solver in exclude_solvers:
+            for inst in self.data[old_scen]:
+                del self.data[new_scen][inst]['solvers'][solver]
+
+        if ext:
+            for inst in self.data[old_scen]:
+                if os.path.splitext(inst)[1] != ext:
+                    self.data[new_scen][os.path.splitext(inst)[0]+"."+ext] = self.data[new_scen].pop(inst)
+
+        if startwith:
+            for inst in self.data[old_scen]:
+                if not inst.startswith(startwith):
+                    self.data[new_scen].pop(inst)
+
+        return self.get_instances(new_scen), self.local_paths(new_scen, self.get_instances(new_scen))
+
 
     ## Scenario scoring/statistics functions
     def evaluate(self, scen, insts, solver_index, mode="par10",

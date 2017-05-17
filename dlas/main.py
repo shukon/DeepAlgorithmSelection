@@ -181,12 +181,15 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
     np.savez(os.path.join(resultPath, "timesPerEpoch.npz"), timesPerEpoch=timesPerEpoch)
     np.savez(os.path.join(resultPath, "timesToPredict.npz"), timesToPredict=timesToPredict)
+    log.debug("Saving losses.")
     np.savez(os.path.join(resultPath, "trainLoss.npz"), trainLoss=trainLoss)
     np.savez(os.path.join(resultPath, "valLoss.npz"), valLoss=valLoss)
     np.savez(os.path.join(resultPath, "testLoss.npz"), testLoss=testLoss)
+    log.debug("Saving predictions.")
     np.savez(os.path.join(resultPath, "trainPred.npz"), trainPred=trainPred)
     np.savez(os.path.join(resultPath, "valPred.npz"), valPred=valPred)
     np.savez(os.path.join(resultPath, "testPred.npz"), testPred=testPred)
+    log.debug("Saving folds")
     np.savez(os.path.join(resultPath, "instInFoldVal.npz"), valFolds=valFolds)
     np.savez(os.path.join(resultPath, "instInFoldTest.npz"), folds=folds)
 
@@ -219,6 +222,8 @@ if __name__ == "__main__":
     scen = args["scen"]
     ID = args["ID"]
     mode = args["mode"]
+
+    ASLIB.load_scenario(scen)
     if mode == "exp":
         if scen == "all":
             scenarios = ["TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
@@ -229,14 +234,15 @@ if __name__ == "__main__":
             log.basicConfig(filename=os.path.join(c.result_path, "log.txt"))
             run_experiment(s, ID, c, skip_if_result_exists=False)
             print(eva.print_table(s, ID))
-    elif sys.argv[1] == "eval":
+    elif mode == "eval":
+        print("Evaluating {}.".format(scen))
         if ID:
             print(eva.print_table(scen, ID))
             eva.plot(scen, ID)
         else:
             for element in eva.compare_ids_for_scen(scen):
                 print(element)
-    elif sys.argv[1] == "stat":
+    elif mode == "stat":
         # Print stats of scenario
         ASLIB.load_scenario(scen)
         print("Scenario-statistics for {}:".format(scen))
@@ -246,7 +252,7 @@ if __name__ == "__main__":
         print("Virtual Best Solver: {}".format(ASLIB.baseline(scen)["vbs"]))
         chosen = [ASLIB.get_labels(scen, i, "par10").index(min(ASLIB.get_labels(scen, i, "par10"))) for i in ASLIB.get_instances(scen)]
         print(ASLIB.solver_distribution(chosen, scen))
-    elif sys.argv[1] == "prep":
+    elif mode == "prep":
         # Prepare image and label
         c = Config(scen, ID)
         prep(scen, c, "instances/"+scen, recalculate = True)

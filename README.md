@@ -6,11 +6,11 @@ DLAS is based on the Algorithm Selection Library (ASlib, https://github.com/cose
 **Performing Experiments:**
 To perform experiments, define the options in an experiment in dlas/config/experiments.py. You can currently see the default-values in dlas/config/config.py.
 Experiments consist of a number of options. The default-values for all those options are defined in dlas/config/config.py.
-An experiment is uniquely identified by the scenario-name + a custom ID and can be invoked using the **dlas/main.py** inteface, which provides the following functionalities:
-`python dlas/main.py exp SCENARIO ID` -- starts an experiment, that you have to define in dlas/config/experiments.py
-`python dlas/main.py eval SCENARIO ID` -- will attempt to evaluate the results including calculating PAR10 and percentage of solved instances, as well as plots on the loss and PAR10 over the epochs of the neural network.
-`python dlas/main.py prep SCENARIO ID` -- will convert the instances and create the labels according to specifications in the experiment
-`python dlas/main.py stat SCENARIO` -- prints a number of scenario-statistics, like the distribution of solvers in Virtual Best Solver (VBS) and the general strength of solvers.
+An experiment is uniquely identified by the scenario-name + a custom ID and can be invoked using the **dlas/main.py** interface, which provides the following functionalities:
+`python dlas/main.py --mode exp --scen SCENARIO --ID ID` -- starts an experiment, that you have to define in dlas/config/experiments.py
+`python dlas/main.py --mode eval --scen SCENARIO --ID ID` -- will attempt to evaluate the results including calculating PAR10 and percentage of solved instances, as well as plots on the loss and PAR10 over the epochs of the neural network.
+`python dlas/main.py --mode prep --scen SCENARIO --ID ID` -- will convert the instances and create the labels according to specifications in the experiment
+`python dlas/main.py --mode stat --scen SCENARIO --ID ID` -- prints a number of scenario-statistics, like the distribution of solvers in Virtual Best Solver (VBS) and the general strength of solvers.
 
 The configurational setup mainly consists of three parts:
   - image conversion

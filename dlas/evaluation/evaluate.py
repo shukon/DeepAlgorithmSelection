@@ -218,28 +218,30 @@ class Evaluator(object):
         # Make twin and plot PAR10
         ax11 = ax1.twinx()
         ax11.plot(numEpochs, valPAR10mean, 'r')
-        ax11.set_ylabel('PAR10', color='r')
+        ax11.set_ylabel('PAR10 (val)', color='r')
         for tl in ax11.get_yticklabels(): tl.set_color('r')
 
         # Second plot
         ax2.plot(numEpochs, valLossMean, 'b-')
+        ax2.plot(numEpochs, trainLossMean, 'b+')
         ax2.set_xlabel('epochs')
         ax2.set_ylabel('validation loss (-), train loss (+)', color='b')
         for tl in ax2.get_yticklabels(): tl.set_color('b')
         # Make twin for % solved
         ax21 = ax2.twinx()
         ax21.plot(numEpochs, valPercSolvedMean, 'r')
-        ax21.set_ylabel('% Solved', color='r')
+        ax21.set_ylabel('% Solved (val)', color='r')
 
         # Third plot
         ax3.plot(numEpochs, valLossMean, 'b-')
+        ax3.plot(numEpochs, trainLossMean, 'b+')
         ax3.set_xlabel('epochs')
         ax3.set_ylabel('validation loss (-), train loss (+)', color='b')
         for tl in ax2.get_yticklabels(): tl.set_color('b')
         # Make twin for misclassified
         ax31 = ax3.twinx()
         ax31.plot(numEpochs, valMisclassifiedMean, 'r')
-        ax31.set_ylabel('Misclassified', color='r')
+        ax31.set_ylabel('Misclassified (val)', color='r')
 
         fig.tight_layout()
         plt.show()

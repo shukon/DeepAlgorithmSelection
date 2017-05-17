@@ -34,7 +34,7 @@ class Evaluator(object):
         avail_IDs = next(os.walk(path))[1]
         return [self.print_table(scen, ID) for ID in avail_IDs]
 
-    def print_table(self, scen, ID):
+    def print_table(self, scen, ID, string=True):
         """ Returns a string which contains a table with the following
         information:
         Scen | ID | PAR10 (epoch) | misclass (epoch) | %solved (epoch)
@@ -63,7 +63,14 @@ class Evaluator(object):
         misclassified_per_epoch = self._get_score_per_epoch(scen, ID, 'misclassified')
         misclassified = (min(misclassified_per_epoch), misclassified_per_epoch.index(min(misclassified_per_epoch)))
 
-        return [scen, ID, (round(par10[0][0], 2), par10[1]),
+        if string:
+            result = "{} on {} results in PAR10 of {} (epo {}), % solved of {} (epo {}) and misclassified score {} (epo {}).".format(
+                             scen, ID, round(par10[0][0], 2), par10[1],
+                       round(percent_solved[0][0] * 100, 4), percent_solved[1],
+                       round(misclassified[0][0], 2), misclassified[1])
+            return result
+        else:
+            return [scen, ID, (round(par10[0][0], 2), par10[1]),
                 (round(percent_solved[0][0], 4), percent_solved[1]),
                 (round(misclassified[0][0], 2), misclassified[1])]
 
@@ -185,17 +192,17 @@ class Evaluator(object):
                 line.append(self.aslib.scen_info[scen]['state_of_art'])
         return options, line
 
-    def plot(self, scen, ID, train=True, val=True, test=False, output_dir = "."):
+    def plot(self, scen, ID, train=True, val=True, test=False, output_dir="results"):
         """
         Plot train-/valLoss vs PAR10 over epochs. Averaged over CV-folds.
         """
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_pdf import PdfPages
         # Get data (already averaged over repetitions) and average over folds
-        trainLoss   = self.getLoss(scen, ID)[0]
-        trainLossMean, trainLossStd   = np.mean(trainLoss, axis=0), np.std(trainLoss, axis=0)
-        valLoss   = self.getLoss(scen, ID)[1]
-        valLossMean, valLossStd   = np.mean(valLoss, axis=0), np.std(valLoss, axis=0)
+        trainLoss = self.getLoss(scen, ID)[0]
+        trainLossMean, trainLossStd = np.mean(trainLoss, axis=0), np.std(trainLoss, axis=0)
+        valLoss = self.getLoss(scen, ID)[1]
+        valLossMean, valLossStd = np.mean(valLoss, axis=0), np.std(valLoss, axis=0)
 
         valPAR10mean, valPAR10std = zip(*self._get_score_per_epoch(scen, ID, 'par10'))
         valPercSolvedMean, valPercSolvedStd = zip(*self._get_score_per_epoch(scen, ID, 'percent_solved'))
@@ -244,9 +251,11 @@ class Evaluator(object):
         ax31.set_ylabel('Misclassified (val)', color='r')
 
         fig.tight_layout()
-        plt.show()
-        with PdfPages(os.path.join(output_dir, scen+"_"+ID+"_plot.pdf")) as pdf:
+        plot_path = os.path.join(output_dir, scen, ID, "0", "eval_plot.pdf")
+        with PdfPages(plot_path) as pdf:
+            print("Saving plot in {}".format(plot_path))
             pdf.savefig()
+        plt.show()
         return plt
 
     def permutationTest(self, *args):

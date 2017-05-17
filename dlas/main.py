@@ -233,11 +233,11 @@ if __name__ == "__main__":
             c = Config(s, ID)
             log.basicConfig(filename=os.path.join(c.result_path, "log.txt"))
             run_experiment(s, ID, c, skip_if_result_exists=False)
-            print(eva.print_table(s, ID))
+            print(eva.print_table(s, ID, string=True))
     elif mode == "eval":
         print("Evaluating {}.".format(scen))
         if ID:
-            print(eva.print_table(scen, ID))
+            print(eva.print_table(scen, ID, string=True))
             eva.plot(scen, ID)
         else:
             for element in eva.compare_ids_for_scen(scen):

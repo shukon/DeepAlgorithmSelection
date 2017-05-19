@@ -38,6 +38,9 @@ class Config(object):
     def __getitem__(self, attr):
         return self.config[attr]
 
+    def get_dictionary(self):
+        return self.config.get_dictionary()
+
     def dict_from_file(self, s, ID):
         with open("experiments/{}.txt".format(ID), 'r') as f:
             content = f.readlines()

@@ -194,7 +194,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     np.savez(os.path.join(resultPath, "instInFoldTest.npz"), folds=folds)
 
     with open(os.path.join(resultPath, "config.p"), 'wb') as handle:
-        pickle.dump(config, handle)
+        pickle.dump(config.get_dictionary(), handle)
     return
 
 if __name__ == "__main__":

@@ -28,10 +28,6 @@ class ASlibHandler(object):
     self.instances: a list with all the instance-files found.
     """
 
-    data = {}    # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
-    instances = {}
-    times = {}
-
     def __init__(self, path="ASlib/", instance_path="instances/"):
         """ Initialize an ASlibHandler.
 
@@ -45,6 +41,8 @@ class ASlibHandler(object):
         #if os.path.exists("aslib_loaded.pickle"):
         #    with open("aslib_loaded.pickle", "rb") as f:
         #        self.data = pickle.load(f)
+        self.data = {}  # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
+        self.cutoff_times = {}  # scen -> cutoff
 
     def load_scenario(self, scen, extension="jpeg", match=None):
         """
@@ -95,6 +93,13 @@ class ASlibHandler(object):
             self.data[scen][row[0]][2] = row[2]
 
         assert len(self.data[scen]) == len(set([a[0] for a in dataset["data"]]))
+
+        # Read cutoff-time
+        with open(os.path.join(self.aslib_path, scen, 'description.txt'), 'r') as fh:
+            for line in fh.readlines():
+                if line.startswith('algorithm_cutoff_time'):
+                    self.cutoff_times[scen] = int(line.split(' : ')[1])
+
         return self.get_instances(scen), self.local_paths(scen, self.get_instances(scen))
 
     ## Scenario-wise functions
@@ -169,28 +174,28 @@ class ASlibHandler(object):
                 if self.data[scen][inst][1][solver][0] == "ok":
                     result.append(self.data[scen][inst][1][solver][1])
                 else:
-                    result.append(self.scen_info[scen]["cutoffTime"]*par_factor)
+                    result.append(self.cutoff_times[scen]*par_factor)
             elif label == "rep":
                 result.append(self.data[scen][inst][1][solver][2])
             else:
                 raise ValueError("{} not recognised as label-option.".format(label))
         return result
 
-    def mutate_scenario(self, old_scen, new_scen, ext=None, startwith=None,
-            exclude_solvers=[]):
+    def mutate_scenario(self, old_scen, new_scen, startwith=None,
+            exclude_solvers=[], ext=None):
         """ Creates new scenario from a loaded scenario, modifying the data.
 
         Args:
             old_scen, new_scen -- strings
                 old_scen from which to create the new_scen.
-            ext -- string
-                if set, rematch instances using only instaces with this extension
             startwith -- string
                 if set, only use instances starting with this string
                 (recalculate CV-splits...)
             exclude_solvers -- list(strings) | list(ints)
                 if set, these solvers are excluded (either ints, interpreted as
                 index in lexico-order from 0 or string, name)
+            (TODO?) ext -- string
+                if set, rematch instances using only instances with this extension
         """
 
         if new_scen in self.data:
@@ -204,15 +209,16 @@ class ASlibHandler(object):
             for inst in self.data[old_scen]:
                 del self.data[new_scen][inst]['solvers'][solver]
 
-        if ext:
-            for inst in self.data[old_scen]:
-                if os.path.splitext(inst)[1] != ext:
-                    self.data[new_scen][os.path.splitext(inst)[0]+"."+ext] = self.data[new_scen].pop(inst)
-
         if startwith:
             for inst in self.data[old_scen]:
                 if not inst.startswith(startwith):
                     self.data[new_scen].pop(inst)
+
+        if ext:
+            raise NotImplementedError()
+            for inst in self.data[old_scen]:
+                if os.path.splitext(inst)[1] != ext:
+                    self.data[new_scen][os.path.splitext(inst)[0]+"."+ext] = self.data[new_scen].pop(inst)
 
         return self.get_instances(new_scen), self.local_paths(new_scen, self.get_instances(new_scen))
 

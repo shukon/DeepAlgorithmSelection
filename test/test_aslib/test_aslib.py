@@ -33,3 +33,17 @@ class ASlibTest(unittest.TestCase):
         solvers = self.aslib.get_solvers(self.scen)
         solvers_expected = ['eax', 'eax.restart', 'lkh', 'lkh.restart', 'maos']
         self.assertEqual(solvers, solvers_expected)
+
+    def test_solvers_stats(self):
+        stats = self.aslib.solver_stats(self.scen)
+        stats_expected = ['Solver 0: (4.5074999999999994, 0.31346650538773674) PAR10 with 0.0 '
+                            'unsuccessful runs.',
+                            'Solver 1: (4.5054999999999996, 0.2419550578103298) PAR10 with 0.0 '
+                            'unsuccessful runs.',
+                            'Solver 2: (3630.6485000000007, 10789.88993237606) PAR10 with 0.1 '
+                            'unsuccessful runs.',
+                            'Solver 3: (44.980999999999995, 95.470006934115176) PAR10 with 0.0 '
+                            'unsuccessful runs.',
+                            'Solver 4: (7207.7865000000002, 14396.106753974675) PAR10 with 0.2 '
+                            'unsuccessful runs.']
+        self.assertEqual(stats, stats_expected)

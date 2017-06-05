@@ -136,19 +136,6 @@ class ASlibHandler(object):
                 s, self.evaluate(scen, inst, [s for x in inst], "par10"), timeouts))
         return lines
 
-    def copy_to_actual_path(self, scen):
-        """ Copies all instances for scenario from matched local-paths to the
-        aslib-path (in self.instance_path/scen/). """
-        basepath = os.path.join(self.instance_path, scen)
-        if not os.path.isdir(basepath):
-            log.debug("Make {}".format(basepath))
-            os.makedirs(basepath)
-        loc_act_insts = zip(self.local_paths(scen, self.get_instances(scen)),
-                            self.get_instances(scen))
-        for loc, act in loc_act_insts:
-            shutil.copy(loc, os.path.join(basepath, act))
-            self.data[scen][act][0] = os.path.join(basepath, act)
-
 
     ## Instance-wise functions:
     def solved_by_any(self, scen, inst):

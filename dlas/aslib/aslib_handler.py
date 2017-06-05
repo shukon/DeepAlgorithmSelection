@@ -24,23 +24,19 @@ class ASlibHandler(object):
     Every instance has a local-path that corresponds to the file.
     Every instance has a dict with performance-data, that is saved as a
     dictionary with {solver_name : (status, performance (time), repetitions}.
-
-    self.instances: a list with all the instance-files found.
     """
 
     def __init__(self, path="ASlib/", instance_path="instances/"):
         """ Initialize an ASlibHandler.
 
         Args:
-            path -- string
+        -----
+            path: string
                 Path to ASlib-scenarios
-            instance_path -- string
+            instance_path: string
                 Path to instances (or where they should be after matching)"""
         self.aslib_path = path
         self.instance_path = instance_path
-        #if os.path.exists("aslib_loaded.pickle"):
-        #    with open("aslib_loaded.pickle", "rb") as f:
-        #        self.data = pickle.load(f)
         self.data = {}  # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
         self.cutoff_times = {}  # scen -> cutoff
 
@@ -50,16 +46,19 @@ class ASlibHandler(object):
         instance-files.
 
         Args:
-            scen -- string
+        -----
+            scen: string
                 Scenario-name
-            match -- dict
+            extension: string
+                Extension for the names in aslib, default: jpeg.
+            match: dict
                 Dictionary with aslib- -> local-instances
         """
         log.info("Loading {} from \"{}\" into memory.".format(scen, self.aslib_path))
         path = os.path.join(os.getcwd(), self.aslib_path, scen, "algorithm_runs.arff")
-        log.debug("Using {}".format(path))
+        log.debug("Using {} with extension {}".format(path, extension))
 
-        # Save scenario-data data[scen][inst][solver] = (status, time, repetions)
+        # Load scenario-data data[scen][inst][solver] = (status, time, repetions)
         dataset = arff.load(open(path, "r"))
         self.data[scen] = {}
 
@@ -82,7 +81,7 @@ class ASlibHandler(object):
             # Add to solver-dictionary: (status, runtime, repitions)
             self.data[scen][row[0]][1][row[2]] = (row[4], row[3], row[1])
 
-        log.info("All instances: {}. Solved at least once: {}.".format(
+        log.info("Found {} instances, {} are solved at least once.".format(
             len(self.data[scen]),
             len([a for a in self.data[scen] if self.solved_by_any(scen,a)])))
 
@@ -107,7 +106,9 @@ class ASlibHandler(object):
         """ Get cross-validation-folds of scenario. ONLY WITH 10-FOLD!
 
         Returns:
-            CVs -- list of lists of strings with aslib-instance-names
+        --------
+            CVs: list of lists of strings
+                folds as lists (in list) with aslib-instance-names
         """
         CVs = []
         for f in range(1, 11):
@@ -118,7 +119,15 @@ class ASlibHandler(object):
         """
         Return list with all instances in this scenario in lexico-sorted order.
 
-        remove_unsolved -- removes all instances for which no algorithm solved the instance
+        Args:
+        -----
+            remove_unsolved: bool
+                removes all instances for which no algorithm solved the instance
+
+        Returns:
+        --------
+            instances: list of strings
+                list with instances of the scenario
         """
         instances = self.data[scen].keys()
         if remove_unsolved:
@@ -126,12 +135,21 @@ class ASlibHandler(object):
         return sorted(instances)
 
     def get_solvers(self, scen):
-        """ Return a list with solvers used in (a random instance of) scenario.
-        """
+        """ Return a list with solvers used in (a random instance of) scenario. """
         inst = random.choice(list(self.data[scen].keys()))
         return sorted(self.data[scen][inst][1].keys())
 
     def solver_stats(self, scen):
+        """
+        Evaluates statistics over the solvers.
+        Returns a list with a string for every solver, containing information on
+        par10-values and timeouts.
+
+        Returns:
+        --------
+            stats: list of string
+                statistics as specified above.
+        """
         inst = self.get_instances(scen)
         lines = []
         for s in range(len(self.get_solvers(scen))):
@@ -159,11 +177,14 @@ class ASlibHandler(object):
         """ Iterate over all solvers (lexico) and requested labels
 
         Args:
-            inst: path to instance as in .txt and aslib's
-            label:
-                status = [0, 1, 0, 1] -- 1 == 'ok'
-                parX = [0.23, 1.52, 0.92, 1.5]
-                rep = [1, 1, 1, 1]  -- #repetitions
+        -----
+            inst: string
+                path to instance as in aslib.
+            label: string
+                one of
+                    status -> [0, 1, 0, 1] (1 == 'ok')
+                    parX   -> [0.23, 1.52, 0.92, 1.5]
+                    rep    -> [1, 1, 1, 1]  (#repetitions)
         """
         result = []
         for solver in sorted(self.get_solvers(scen)):
@@ -186,15 +207,16 @@ class ASlibHandler(object):
         """ Creates new scenario from a loaded scenario, modifying the data.
 
         Args:
-            old_scen, new_scen -- strings
+        -----
+            old_scen, new_scen: strings
                 old_scen from which to create the new_scen.
-            startwith -- string
+            startwith: string
                 if set, only use instances starting with this string
                 (recalculate CV-splits...)
-            exclude_solvers -- list(strings) | list(ints)
+            exclude_solvers: list(strings) | list(ints)
                 if set, these solvers are excluded (either ints, interpreted as
                 index in lexico-order from 0 or string, name)
-            (TODO?) ext -- string
+            (TODO?) ext: string
                 if set, rematch instances using only instances with this extension
         """
 
@@ -229,18 +251,28 @@ class ASlibHandler(object):
         """
         Evaluates score depending on mode.
 
-        ATTENTION: if mode is misclassified, solver_index is a list of lists
+        ATTENTION: if mode is "misclassified", solver_index is a list of lists
         with direct output of neural network, i.e. values between 0 and 1.
 
         Args:
-            scen -- name of scenario holding the instances
-            insts -- list of instance-names, as they exist in the ASlib-data
-            solver_index -- list of equal length, containing the index of the
-                            chosen solver (corresponding)
-            mode -- domain: [parX, percent_solved, misclassified]
-            ignore_unsolved -- If True, only consider instances solved at least once
+        -----
+        scen: string
+            name of scenario holding the instances
+        insts: list of strings
+            list of instance-names, as they exist in the ASlib-data
+        solver_index: list of ints
+            list of equal length as insts, containing the index of the
+            chosen solver (corresponding, ordered!)
+        mode: string
+            metric to be evaluated, from [parX, percent_solved,
+            misclassified], default par10.
+        ignore_unsolved: bool
+            if True, only consider instances solved at least once
 
-        Returns: averaged score, depending on mode
+        Returns:
+        --------
+        results: mean, std
+            averaged score, depending on mode
         """
         assert len(insts) == len(solver_index)
         scores = []
@@ -269,11 +301,17 @@ class ASlibHandler(object):
         """ Calculates a baseline for scenario.
 
         Args:
-            insts -- only consider these instances, if None, consider all
-            mode -- metric to calculate baseline for (in parX, percent_solved, misclassified)
+        -----
+        insts: list of insts
+            only consider these instances, if None, consider all
+        mode: string
+            metric to be evaluated, from [parX, percent_solved,
+            misclassified], default par10.
 
         Returns:
-            as dict: VBS, BSS, RAND, GOOD_RAND
+        --------
+        baseline: dict of tuples of means and stds
+            VBS, BSS, RAND, GOOD_RAND
         """
         log.debug("Using {} for baseline-evaluation of {}.".format(mode, scen))
         baseline = {}
@@ -285,7 +323,18 @@ class ASlibHandler(object):
         return baseline
 
     def get_good_random_score(self, scen, inst=None, mode="par10"):
-        """ Consider only instances-solver pairs that actually get solved. """
+        """ Consider only instances-solver pairs that actually get solved.
+
+        Args:
+        -----
+        scen: string
+            scenario to be evaluated
+        inst: None or list of strings
+            list of instances to be evaluated (default: all)
+        mode: string
+            metric to be evaluated, from [parX, percent_solved,
+            misclassified], default par10.
+        """
         goodRandInst = [[i for l in self.get_labels(scen,i,label="status") if l] for i in inst]
         goodRandSolv = [[l for l in range(len(self.get_solvers(scen))) if self.get_labels(scen,i,label="status")[l]] for i in inst]
         goodRandInst = [a for b in goodRandInst for a in b]
@@ -293,7 +342,7 @@ class ASlibHandler(object):
         return self.evaluate(scen, goodRandInst, goodRandSolv, mode=mode)
 
     def get_random_score(self, scen, inst=None, mode="par10"):
-        """ Return expected value for random selection by selecting each solver
+        """ Return expected value (mean, std) for random selection by selecting each solver
         once per instance. """
         num_solvers = len(self.get_solvers(scen))
         rand_inst = [a for b in [inst for solver in
@@ -303,7 +352,7 @@ class ASlibHandler(object):
         return self.evaluate(scen, rand_inst, rand_solv, mode=mode)
 
     def get_bss_score(self, scen, inst=None, mode="par10"):
-        """ Return score for best single solver. """
+        """ Return score (mean, std) for best single solver. """
         if inst == None: inst = self.get_instances(scen)
         # Evaluate over CVs:
         result = [[],[]]  # inst, solvers
@@ -317,6 +366,7 @@ class ASlibHandler(object):
         return self.evaluate(scen, result[0], result[1], mode=mode)
 
     def get_vbs_score(self, scen, inst=None, mode='par10'):
+        """ Return virtually best score (mean, std), i.e. oracle performance. """
         if inst == None: inst = self.get_instances(scen)
         if mode == 'percent_solved':
             chosen = [self.get_labels(scen, i, mode).index(max(self.get_labels(scen, i, mode))) for i in inst]
@@ -345,13 +395,3 @@ class ASlibHandler(object):
             else: s = k
             res += "{}: {} ({}%)|".format(s,v,round(v/float(total)*100,1))
         return res
-
-if __name__ == "__main__":
-    log.basicConfig(level = log.DEBUG)
-    scens = ["TSP"] #, "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]
-    #with open("aslib_loaded.pickle", "rb") as f: a.data = pickle.load(f)
-    aslib = ASlibHandler()
-    for s in scens:
-        aslib.load_scenario(s)
-        log.info(aslib.baseline(s))
-    with open("aslib_loaded.pickle", "wb") as f: pickle.dump(aslib.data, f)

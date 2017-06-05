@@ -3,6 +3,22 @@ DLAS is based on the Algorithm Selection Library (ASlib, https://github.com/cose
 
 !! The framework is under heavy construction and may not be working correctly at all times, backwards-compatibility is not guaranteed. !!
 
+**Expected data-format:**
+DLAS works with ASlib and specifically needs:
+
+- ASlib/<scen>/algorithm_runs.arff
+- ASlib/<scen>/cv.arff
+- ASlib/<scen>/description.txt
+
+Instances are expected in:
+
+- instances/<scen>/<instance>.<ext>
+
+where <instance> is the instance-name as provided in ASlibs algorithm_runs.arff
+and <ext> is an arbitrary extension that you specify. This allows for multiple
+versions of one instance in the instances-folder (which is interesting to
+compare different kinds of images).
+
 **Performing Experiments:**
 To perform experiments, define the options in an experiment in dlas/config/experiments.py. You can currently see the default-values in dlas/config/config.py.
 Experiments consist of a number of options. The default-values for all those options are defined in dlas/config/config.py.

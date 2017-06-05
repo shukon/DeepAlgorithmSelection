@@ -17,8 +17,6 @@ class MainTest(unittest.TestCase):
         self.ID = "tsp-test"
         self.config = Config(self.scen, self.ID)
         self.aslib = ASlibHandler()
-        with open("aslib_loaded.pickle", "rb") as f:
-            self.aslib.data = pickle.load(f)
 
     def tearDown(self):
         pass

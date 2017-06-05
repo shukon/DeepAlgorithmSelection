@@ -28,22 +28,9 @@ class ASlibHandler(object):
     self.instances: a list with all the instance-files found.
     """
 
-    source = ""  # Path from cwd to ASlib
     data = {}    # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
     instances = {}
     times = {}
-    file_exts = {"TSP":"tsp", "Image":"jpeg"}
-    scen_info = {
-                "TSP"          : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 16.97333, "vbs": 10.80658},
-                "TSP-MORPHED"  : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-NETGEN"   : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-RUE"      : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-MORPHED-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-                "TSP-NETGEN-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0},
-		"TSP-RUE-NO-EAXRESTART" : {"d":"TSP", "cutoffTime":3600,"state_of_art": None, "bss": 0, "vbs": 0},
-		"TestScen" : {"d":"TSP", "cutoffTime":3600 ,"state_of_art": None, "bss": 0, "vbs": 0}
-                }
 
     def __init__(self, path="ASlib/", instance_path="instances/"):
         """ Initialize an ASlibHandler.
@@ -53,13 +40,13 @@ class ASlibHandler(object):
                 Path to ASlib-scenarios
             instance_path -- string
                 Path to instances (or where they should be after matching)"""
-        self.source = path
+        self.aslib_path = path
         self.instance_path = instance_path
-        if os.path.exists("aslib_loaded.pickle"):
-            with open("aslib_loaded.pickle", "rb") as f:
-                self.data = pickle.load(f)
+        #if os.path.exists("aslib_loaded.pickle"):
+        #    with open("aslib_loaded.pickle", "rb") as f:
+        #        self.data = pickle.load(f)
 
-    def load_scenario(self, scen, match=None, extension="jpeg"):
+    def load_scenario(self, scen, extension="jpeg", match=None):
         """
         Load scenario data and attempt to match instances in scenario to local
         instance-files.
@@ -70,8 +57,8 @@ class ASlibHandler(object):
             match -- dict
                 Dictionary with aslib- -> local-instances
         """
-        log.info("Loading {} from \"{}\" into memory.".format(scen, self.source))
-        path = os.path.join(os.getcwd(), self.source, scen, "algorithm_runs.arff")
+        log.info("Loading {} from \"{}\" into memory.".format(scen, self.aslib_path))
+        path = os.path.join(os.getcwd(), self.aslib_path, scen, "algorithm_runs.arff")
         log.debug("Using {}".format(path))
 
         # Save scenario-data data[scen][inst][solver] = (status, time, repetions)
@@ -102,7 +89,7 @@ class ASlibHandler(object):
             len([a for a in self.data[scen] if self.solved_by_any(scen,a)])))
 
         # Mark Cross-Validation-folds
-        cv_path = os.getcwd() + "/" + self.source + scen + "/cv.arff"
+        cv_path = os.getcwd() + "/" + self.aslib_path + scen + "/cv.arff"
         cv_data = arff.load(open(cv_path, "r"))
         for row in cv_data["data"]:
             self.data[scen][row[0]][2] = row[2]

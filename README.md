@@ -19,6 +19,9 @@ and <ext> is an arbitrary extension that you specify. This allows for multiple
 versions of one instance in the instances-folder (which is interesting to
 compare different kinds of images).
 
+If you want to exlude solvers from the scenario or use only instances starting
+with a certain string, look into dlas/aslib/aslib_handler.py:mutate_scenario.
+
 **Performing Experiments:**
 To perform experiments, define the options in an experiment in dlas/config/experiments.py. You can currently see the default-values in dlas/config/config.py.
 Experiments consist of a number of options. The default-values for all those options are defined in dlas/config/config.py.

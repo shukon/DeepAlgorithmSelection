@@ -8,7 +8,7 @@ from dlas.data_prep.image_prep import ImagePrep
 
 class FromImage(ImagePrep):
     """
-    Implements image conversion from text-file to image-file.
+    Implements image conversion from image-file to image-file.
     """
     def __init__(self, config):
         super(FromImage, self).__init__(config)
@@ -24,14 +24,16 @@ class FromImage(ImagePrep):
 
     def get_image_data(self, local_inst):
         """
+        Implements get_image_data.
+
         Arguments:
-            local_inst -- list of strings
+            local_inst: list of strings
                 local paths to instance-pictures
 
         Returns:
-            X -- numpy.array
+            X: numpy.array
                 image-data
-            times -- list of ints
+            times: list of ints
                 time to convert for each instance
         """
         data, times = np.array([]), []
@@ -39,8 +41,8 @@ class FromImage(ImagePrep):
             img, t = self._convert(i)
             data = np.append(data, np.array(img))
             times.append(t)
-            if (np.isnan(np.array(img)).any()):
-                self.log.warning("NAN: {}".format(i))
+            if np.isnan(np.array(img)).any():
+                self.log.warning("NAN: %s", i)
         return data, times
 
     def _convert(self, img_path, save=False):

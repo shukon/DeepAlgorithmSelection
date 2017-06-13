@@ -12,10 +12,14 @@ class DataPreparer(object):
     the provided methods or a customized one.
 
     Args:
-        config -- dictionary with config-details
-        instance_path -- path to instance-files to be read in
-        img_dir -- where to put imagedata
-        label_dir -- where to put labeldata
+        config: dictionary or Configuration
+            specifies conversion details
+        instance_path: string
+            path to instance-files to be read in
+        img_dir: string
+            where to put imagedata
+        label_dir: string
+            where to put labeldata
     """
 
     def __init__(self, config, aslib, instance_path, img_dir=None, label_dir=None):
@@ -39,12 +43,7 @@ class DataPreparer(object):
             self.label_dir))
 
     def norm(self, data):
-        scale = StandardScaler() #with_mean=0, with_std=1)
-        #reshaped_data = data.reshape(data.shape[0], -1)
-        #print(reshaped_data.scale)
-        #scale.fit(reshaped_data)
-        #reshaped_data = scale.transform(reshaped_data)
-        #return data.reshape(data.shape)
+        scale = StandardScaler()
         return scale.fit_transform(data)
 
     def float32(self, k):  # Necessary for theano-intern reasons
@@ -56,11 +55,12 @@ class DataPreparer(object):
         specified in config.
 
         Arguments:
-            local_inst -- list of strings (ORDERED!)
+            local_inst: list of strings (ORDERED!)
                 an ordered list of paths to local instances
 
         Returns:
-            img_data
+            img_data: np.array
+                the (converted) image-instance data
 
         Sideeffect:
             if self.img_output, writes data into output_dir
@@ -101,7 +101,9 @@ class DataPreparer(object):
         conversion-properties specified in config.
         Instances as in aslib-instances (not local-paths!).
 
-        Returns label_data
+        Returns
+            label_data: np.array
+                (converted) label-data
 
         Sideeffect:
             if self.label_output, writes data into output_dir
@@ -123,6 +125,13 @@ class DataPreparer(object):
         return label_data
 
     def get_class(self, kls):
+        """
+        Used to load and use customized preparation-classes.
+
+        Args:
+            kls: string
+                path to class-file
+        """
         parts = kls.split('.')
         module = ".".join(parts[:-1])
         m = __import__( module )
@@ -131,6 +140,13 @@ class DataPreparer(object):
         return m
 
     def _set_image_prep(self, image_mode):
+        """
+        Setting image-preparation-method by loading class manually.
+
+        Args:
+            image_mode: string
+                class- (and file-) name of preparation unit
+        """
         try:
             self.image_prep = self.get_class("dlas.data_prep."+image_mode+"."+image_mode)(self.config)
         except ImportError:
@@ -138,6 +154,13 @@ class DataPreparer(object):
                            "the same name?".format(image_mode))
 
     def _set_label_prep(self, label_mode):
+        """
+        Setting label-preparation-method by loading class manually.
+
+        Args:
+            label_mode: string
+                class- (and file-) name of preparation unit
+        """
         try:
             self.label_prep = self.get_class("dlas.data_prep."+label_mode+"."+label_mode)(self.config, self.aslib)
         except ImportError:

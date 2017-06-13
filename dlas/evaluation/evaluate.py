@@ -46,11 +46,16 @@ class Evaluator(object):
         averaged over the repetitions.
 
         Args:
-            scen -- string, scenario-name (e.g. "SAT11-INDU")
-            ID -- string, experiment-id (e.g. "test")
+            scen: string
+                scenario-name (e.g. "SAT11-INDU")
+            ID: string
+                experiment-id (e.g. "test")
+            string: boolean
+                if True, return string
 
         Returns:
-            list with values as documented in doc-string 
+            table: string or list
+                as documented in doc-string
         """
         if ID in ["tsp-inst-name", "tsp-inst-name-cnn"]:
             # Catching special case

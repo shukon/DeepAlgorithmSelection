@@ -26,13 +26,13 @@ class TextToImage(ImagePrep):
     def get_image_data(self, local_inst):
         """
         Arguments:
-            local_inst -- list of strings
+            local_inst: list of strings
                 local paths to instances
 
         Returns:
-            X -- numpy.array
+            X: numpy.array
                 image-data
-            times -- list of ints
+            times: list of ints
                 time to convert for each instance
         """
         # Make image data
@@ -58,11 +58,11 @@ class TextToImage(ImagePrep):
         numpy-format)
 
         Arguments:
-            path -- str
+            path: str
                 path to instance to be converted
 
         Returns:
-            inst_img -- numpy array
+            inst_img: numpy array
                 Image data for instance
         """
         start = time.clock()

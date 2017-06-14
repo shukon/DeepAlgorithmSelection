@@ -27,7 +27,7 @@ class MultiLabelBase(LabelPrep):
                 image-data
         """
         y = np.array([])
-        cutoff = self.aslib.scen_info[self.scen]["cutoffTime"]
+        cutoff = self.aslib.cutoff_times[self.scen]
 
         for i in inst:
             par10labels = self.aslib.get_labels(self.scen, i,

@@ -7,7 +7,7 @@ from __future__ import print_function
 
 import os
 import sys
-import logging as log
+import logging
 import pickle
 import numpy as np
 import inspect
@@ -23,9 +23,35 @@ from dlas.config.config import Config
 from dlas.aslib.aslib_handler import ASlibHandler
 from dlas.evaluation.evaluate import Evaluator
 
-log.basicConfig(level=log.DEBUG)
-
 ASLIB = ASlibHandler()
+
+def setupLogging(output_dir, verbose_level):
+    # Log to stream (console)
+    logging.getLogger().setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    stdout_handler = logging.StreamHandler()
+    stdout_handler.setFormatter(formatter)
+    if verbose_level == "INFO":
+        stdout_handler.setLevel(logging.INFO)
+    else:
+        stdout_handler.setLevel(logging.DEBUG)
+        if verbose_level == "DEV_DEBUG":
+            # Disable annoying boilerplate-debug-logs from foreign modules
+            disable_loggers = []
+            for logger in disable_loggers:
+                logging.getLogger().debug("Setting logger \'%s\' on level INFO", logger)
+                logging.getLogger(logger).setLevel(logging.INFO)
+    logging.getLogger().addHandler(stdout_handler)
+    # Log to file
+    if not os.path.exists(os.path.join(output_dir, "debug")):
+        os.makedirs(os.path.join(output_dir, "debug"))
+    fh = logging.FileHandler(os.path.join(output_dir, "debug/debug.log"), "w")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logging.getLogger().addHandler(fh)
+    # Color warnings and errors
+    for lvl in [logging.WARNING, logging.ERROR]:
+        logging.addLevelName(lvl, "\033[1;31m%s\033[1;0m" % logging.getLevelName(lvl))
 
 def prep(scen, config, instance_path, recalculate = False):
     """
@@ -77,16 +103,15 @@ def run_experiment(scen, ID, config, skip_if_result_exists = True):
     # Load scenario-data
     ASLIB.load_scenario(scen)
 
-    log.basicConfig(level=log.DEBUG)
-    log.debug(config.config)
+    logging.debug(config.config)
 
     rep = config.rep
     result_path = config.result_path
 
     if skip_if_result_exists and os.path.exists(result_path):
-        log.info("Skipping experiment for scen {} with ID {} in repetition {}, "
-                 "because it seems that it has already been performed.".format(
-                     scen, ID, rep))
+        logging.info("Skipping experiment for scen {} with ID {} in repetition {}, "
+                     "because it seems that it has already been performed.".format(
+                      scen, ID, rep))
         return
     if not os.path.exists(result_path):
         os.makedirs(result_path)
@@ -122,7 +147,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
     folds = ASLIB.getCVfolds(scen)  # Use folds from ASlib-scenario
 
-    log.debug("Number of instances in list: {}, number of images in image-data: {}".format(len(inst), len(X)))
+    logging.debug("Number of instances in list: {}, number of images in image-data: {}".format(len(inst), len(X)))
     assert(len(X)==len(inst))
 
     # Check if any folds are overlapping:
@@ -132,7 +157,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
             if not (set(a).isdisjoint(b)):
                 raise ValueError("Crossvalidation-folds are not disjoint.")
             if not len(a) == len(b):
-                log.warning("Folds not equal size! {} vs {}".format(len(a), len(b)))
+                logging.warning("Folds not equal size! {} vs {}".format(len(a), len(b)))
 
     for test_fold in folds:
         # We use the fold following the current testfold for validation (test 1 -> val 2, ... test 10 -> val 1)
@@ -160,7 +185,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
         valFolds.append(valInst)
 
-        log.info("Now training with crossvalidation, test-fold {} of {}, use Validation: {}, repetition {}.".format(folds.index(test_fold),
+        logging.info("Now training with crossvalidation, test-fold {} of {}, use Validation: {}, repetition {}.".format(folds.index(test_fold),
                             len(folds), config.use_validation, config.rep))
         net = Network(config)
         # Is this really the best method? ...
@@ -170,7 +195,7 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
         else:
             errorLog ="failedrun_{}_{}_{}.txt\"".format(scen, config.ID,
                     config.rep)
-            log.error("Training failed. Saving {}.".format(errorLog))
+            logging.error("Training failed. Saving {}.".format(errorLog))
             with open(errorLog, 'w') as f: f.write(errorLog)
             return
 
@@ -189,15 +214,15 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
     np.savez(os.path.join(resultPath, "timesPerEpoch.npz"), timesPerEpoch=timesPerEpoch)
     np.savez(os.path.join(resultPath, "timesToPredict.npz"), timesToPredict=timesToPredict)
-    log.debug("Saving losses.")
+    logging.debug("Saving losses.")
     np.savez(os.path.join(resultPath, "trainLoss.npz"), trainLoss=trainLoss)
     np.savez(os.path.join(resultPath, "valLoss.npz"), valLoss=valLoss)
     np.savez(os.path.join(resultPath, "testLoss.npz"), testLoss=testLoss)
-    log.debug("Saving predictions.")
+    logging.debug("Saving predictions.")
     np.savez(os.path.join(resultPath, "trainPred.npz"), trainPred=trainPred)
     np.savez(os.path.join(resultPath, "valPred.npz"), valPred=valPred)
     np.savez(os.path.join(resultPath, "testPred.npz"), testPred=testPred)
-    log.debug("Saving folds")
+    logging.debug("Saving folds")
     np.savez(os.path.join(resultPath, "instInFoldVal.npz"), valFolds=valFolds)
     np.savez(os.path.join(resultPath, "instInFoldTest.npz"), folds=folds)
 
@@ -206,10 +231,6 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
     return
 
 if __name__ == "__main__":
-    # Logger config
-    log.basicConfig(level=log.DEBUG)
-    log.addLevelName(log.WARNING, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.WARNING))  # Color warnings
-    log.addLevelName(log.ERROR, "\033[1;31m%s\033[1;0m" % log.getLevelName(log.ERROR))  # Color errors
 
     eva = Evaluator()
 
@@ -231,6 +252,8 @@ if __name__ == "__main__":
     ID = args["ID"]
     mode = args["mode"]
 
+    setupLogging("tmpOut", "DEBUG")
+
     ASLIB.load_scenario(scen)
     if mode == "exp":
         if scen == "all":
@@ -239,7 +262,6 @@ if __name__ == "__main__":
             scenarios = [scen]
         for s in scenarios:
             c = Config(s, ID)
-            log.basicConfig(filename=os.path.join(c.result_path, "log.txt"))
             run_experiment(s, ID, c, skip_if_result_exists=False)
             print(eva.print_table(s, ID, string=True))
     elif mode == "eval":

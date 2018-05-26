@@ -97,7 +97,8 @@ class ASlibHandler(object):
         with open(os.path.join(self.aslib_path, scen, 'description.txt'), 'r') as fh:
             for line in fh.readlines():
                 if line.startswith('algorithm_cutoff_time'):
-                    self.cutoff_times[scen] = int(line.split(' : ')[1])
+                    log.info(line)
+                    self.cutoff_times[scen] = int(line.split(':')[1].strip())
 
         return self.get_instances(scen), self.local_paths(scen, self.get_instances(scen))
 

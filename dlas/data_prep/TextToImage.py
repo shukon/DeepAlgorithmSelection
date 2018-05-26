@@ -2,6 +2,7 @@ import time
 import gzip, bz2
 import math
 import warnings
+import logging as log
 
 from PIL import Image
 import numpy as np
@@ -70,10 +71,10 @@ class TextToImage(ImagePrep):
         # Read in file
         if self.unpack and path.endswith(".gz"):
             with gzip.open(path, 'rb') as f:
-                inst = f.readlines()
+                inst = [str(l) for l in f.readlines()]
         elif self.unpack and path.endswith(".bz2"):
             with bz2.open(path, 'rb') as f:
-                inst = f.readlines()
+                inst = [str(l) for l in f.readlines()]
         else:
             with open(path, 'r') as f:
                 inst = f.readlines()

@@ -78,7 +78,7 @@ def prep(scen, config, instance_path, recalculate = False):
     """
     # Load scenario-data
     if config["image-mode"] == "TextToImage":
-        ASLIB.load_scenario(scen, extension="tsp")
+        ASLIB.load_scenario(scen, extension="gz")
     elif config["image-mode"] == "FromImage":
         ASLIB.load_scenario(scen, extension="jpeg")
     # Sorted, INCLUDE ALL INSTANCES, i.e. include timeouts etc.:

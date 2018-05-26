@@ -1,0 +1,13 @@
+nn-learningrate-start = 0.1
+nn-learningrate-stop = 0.0001
+nn-momentum-start = 0.9
+nn-momentum-stop = 0.999
+image-mode = TextToImage
+label-mode = MultiLabelBase
+image-dim = 100
+nn-model = cnn
+nn-numEpochs = 30
+nn-batchsize = 64
+nn-lossfunction = binary_crossentropy
+nn-conv-size-one = 3
+nn-conv-size-two = 2

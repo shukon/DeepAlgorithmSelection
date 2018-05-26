@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """ Main execution script for DLAS.
 Here the basic experiment functions are defined and the interaction between user
 and module happens. """
@@ -8,6 +10,12 @@ import sys
 import logging as log
 import pickle
 import numpy as np
+import inspect
+
+cmd_folder = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0]))
+cmd_folder = os.path.realpath(os.path.join(cmd_folder, ".."))
+if cmd_folder not in sys.path:
+    sys.path.insert(0, cmd_folder)
 
 from dlas.neural_net.network import Network
 from dlas.data_prep.data_prep import DataPreparer

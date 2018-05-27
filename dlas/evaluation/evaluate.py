@@ -19,13 +19,16 @@ class Evaluator(object):
     Provides: PAR10-scores, #of wrong classifications, % of solved instances
               as table or plot over time.
     """
-    def __init__(self):
+    def __init__(self, aslib=None):
         self.base_path = "results/{}/{}/"
 
-        self.aslib = ASlibHandler()
-        if os.path.exists("aslib_loaded.pickle"):
-            with open("aslib_loaded.pickle", "rb") as f:
-                self.aslib.data = pickle.load(f)
+        if aslib:
+            self.aslib = aslib
+        else:
+            self.aslib = ASlibHandler()
+            if os.path.exists("aslib_loaded.pickle"):
+                with open("aslib_loaded.pickle", "rb") as f:
+                    self.aslib.data = pickle.load(f)
 
     def compare_ids_for_scen(self, scen):
         """ Prints information available for scenario and compares all

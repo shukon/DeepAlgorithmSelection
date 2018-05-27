@@ -8,7 +8,7 @@ the distribution of solvers. """
 
 import os
 import re
-import logging as log
+import logging
 import random
 import pickle
 import shutil
@@ -35,12 +35,13 @@ class ASlibHandler(object):
                 Path to ASlib-scenarios
             instance_path: string
                 Path to instances (or where they should be after matching)"""
+        self.logger = logging.getLogger("dlas.aslib.aslib_handler")
         self.aslib_path = path
         self.instance_path = instance_path
         self.data = {}  # data[scen][aslib-inst] = (local-path-inst, [solver], cv) = (status, time, repetions))
         self.cutoff_times = {}  # scen -> cutoff
 
-    def load_scenario(self, scen, extension="jpeg", match=None):
+    def load_scenario(self, scen, extension="gz", match=None):
         """
         Load scenario data and attempt to match instances in scenario to local
         instance-files.
@@ -54,9 +55,9 @@ class ASlibHandler(object):
             match: dict
                 Dictionary with aslib- -> local-instances
         """
-        log.info("Loading {} from \"{}\" into memory.".format(scen, self.aslib_path))
+        self.logger.info("Loading {} from \"{}\" into memory.".format(scen, self.aslib_path))
         path = os.path.join(os.getcwd(), self.aslib_path, scen, "algorithm_runs.arff")
-        log.debug("Using {} with extension {}".format(path, extension))
+        self.logger.debug("Using {} with extension {}".format(path, extension))
 
         # Load scenario-data data[scen][inst][solver] = (status, time, repetions)
         dataset = arff.load(open(path, "r"))
@@ -81,7 +82,7 @@ class ASlibHandler(object):
             # Add to solver-dictionary: (status, runtime, repitions)
             self.data[scen][row[0]][1][row[2]] = (row[4], row[3], row[1])
 
-        log.info("Found {} instances, {} are solved at least once.".format(
+        self.logger.info("Found {} instances, {} are solved at least once.".format(
             len(self.data[scen]),
             len([a for a in self.data[scen] if self.solved_by_any(scen,a)])))
 
@@ -97,7 +98,7 @@ class ASlibHandler(object):
         with open(os.path.join(self.aslib_path, scen, 'description.txt'), 'r') as fh:
             for line in fh.readlines():
                 if line.startswith('algorithm_cutoff_time'):
-                    log.info(line)
+                    self.logger.info(line)
                     self.cutoff_times[scen] = int(line.split(':')[1].strip())
 
         return self.get_instances(scen), self.local_paths(scen, self.get_instances(scen))
@@ -275,7 +276,10 @@ class ASlibHandler(object):
         results: mean, std
             averaged score, depending on mode
         """
-        assert len(insts) == len(solver_index)
+        if not len(insts) == len(solver_index):
+            raise ValueError("Something went wrong with the evaluation, trying "
+                             "to compate %d instances against %d solutions..." %
+                             (len(insts), len(solver_index)))
         scores = []
         not_evaluated = 0
         for i, s in zip(insts, solver_index):
@@ -314,7 +318,7 @@ class ASlibHandler(object):
         baseline: dict of tuples of means and stds
             VBS, BSS, RAND, GOOD_RAND
         """
-        log.debug("Using {} for baseline-evaluation of {}.".format(mode, scen))
+        self.logger.debug("Using {} for baseline-evaluation of {}.".format(mode, scen))
         baseline = {}
         if insts == None: insts = self.get_instances(scen, remove_unsolved=False)
         baseline["vbs"] = self.get_vbs_score(scen, insts, mode)
@@ -389,7 +393,7 @@ class ASlibHandler(object):
         """
         res = ""
         stats = {s:solvers.count(s) for s in set(solvers)}
-        log.debug(stats)
+        self.logger.debug(stats)
         total = sum(x[1] for x in stats.items())
         for k,v in reversed(sorted(stats.items(), key=lambda x: x[1])):
             if scen: s = self.get_solvers(scen)[k]

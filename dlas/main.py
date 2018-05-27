@@ -214,15 +214,15 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
     np.savez(os.path.join(resultPath, "timesPerEpoch.npz"), timesPerEpoch=timesPerEpoch)
     np.savez(os.path.join(resultPath, "timesToPredict.npz"), timesToPredict=timesToPredict)
-    logging.debug("Saving losses.")
+    logging.debug("Saving losses. Shapes: %s, %s, %s", trainLoss.shape, valLoss.shape, testLoss.shape)
     np.savez(os.path.join(resultPath, "trainLoss.npz"), trainLoss=trainLoss)
     np.savez(os.path.join(resultPath, "valLoss.npz"), valLoss=valLoss)
     np.savez(os.path.join(resultPath, "testLoss.npz"), testLoss=testLoss)
-    logging.debug("Saving predictions.")
+    logging.debug("Saving predictions. Shapes: %s, %s, %s", trainPred.shape, valPred.shape, testPred.shape)
     np.savez(os.path.join(resultPath, "trainPred.npz"), trainPred=trainPred)
     np.savez(os.path.join(resultPath, "valPred.npz"), valPred=valPred)
     np.savez(os.path.join(resultPath, "testPred.npz"), testPred=testPred)
-    logging.debug("Saving folds")
+    logging.debug("Saving folds. Shapes: %s, %s", valFolds.shape, folds.shape)
     np.savez(os.path.join(resultPath, "instInFoldVal.npz"), valFolds=valFolds)
     np.savez(os.path.join(resultPath, "instInFoldTest.npz"), folds=folds)
 

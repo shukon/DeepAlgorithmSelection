@@ -148,8 +148,11 @@ class Evaluator(object):
         """ Calculates PAR10-score over repetitions for a certain epoch.
         val for validation, test for test. """
         # Determine number of repetitions from folder-structure:
-        path = "results/{}/{}/".format(scen,ID)
+        path = "results/{}/{}/".format(scen, ID)
         repetitions = next(os.walk(path))[1]
+        log.debug("Loading from %s, detected %d repetitions (scen: %s, ID: %s, "
+                  "metric: %s, mode: %s, epoch: %d)", path, len(repetitions),
+                  scen, ID, metric, mode, epoch)
         mean, std = [], []
         for rep in repetitions:
             # Zip instances to their (for now final) scores:

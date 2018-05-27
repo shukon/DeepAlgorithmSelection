@@ -279,18 +279,18 @@ class Network:
             timesPerEpoch.append(time.time()-start_time)
 
             # Save losses
-            trainloss.append(train_err)
-            if useValidation: valloss.append(val_err)
-            testloss.append(test_err)
+            trainloss.append(np.array(train_err))
+            if useValidation: valloss.append(np.array(val_err))
+            testloss.append(np.array(test_err))
 
             # Save accuracies
-            if useValidation: valAcc.append(val_acc)
-            testAcc.append(test_acc)
+            if useValidation: valAcc.append(np.array(val_acc))
+            testAcc.append(np.array(test_acc))
 
             # Save predictions
-            trainpred.append(self.predict_fn(X))
-            if useValidation: valpred.append(self.predict_fn(X_val))
-            testpred.append(self.predict_fn(X_test))
+            trainpred.append(np.array(self.predict_fn(X)))
+            if useValidation: valpred.append(np.array(self.predict_fn(X_val)))
+            testpred.append(np.array(self.predict_fn(X_test)))
             timesToPredict.append(time.time()-start_time)
 
             # Skip really bad settings right away

@@ -214,15 +214,15 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
     np.savez(os.path.join(resultPath, "timesPerEpoch.npz"), timesPerEpoch=timesPerEpoch)
     np.savez(os.path.join(resultPath, "timesToPredict.npz"), timesToPredict=timesToPredict)
-    logging.debug("Saving losses. Shapes: %s, %s, %s", trainLoss.shape, valLoss.shape, testLoss.shape)
+    logging.debug("Saving losses.")
     np.savez(os.path.join(resultPath, "trainLoss.npz"), trainLoss=trainLoss)
     np.savez(os.path.join(resultPath, "valLoss.npz"), valLoss=valLoss)
     np.savez(os.path.join(resultPath, "testLoss.npz"), testLoss=testLoss)
-    logging.debug("Saving predictions. Shapes: %s, %s, %s", trainPred.shape, valPred.shape, testPred.shape)
+    logging.debug("Saving predictions.")
     np.savez(os.path.join(resultPath, "trainPred.npz"), trainPred=trainPred)
     np.savez(os.path.join(resultPath, "valPred.npz"), valPred=valPred)
     np.savez(os.path.join(resultPath, "testPred.npz"), testPred=testPred)
-    logging.debug("Saving folds. Shapes: %s, %s", valFolds.shape, folds.shape)
+    logging.debug("Saving folds")
     np.savez(os.path.join(resultPath, "instInFoldVal.npz"), valFolds=valFolds)
     np.savez(os.path.join(resultPath, "instInFoldTest.npz"), folds=folds)
 
@@ -232,7 +232,6 @@ def cross_validation(scen, ID, inst, X, y, config, resultPath, rep = 1):
 
 if __name__ == "__main__":
 
-    eva = Evaluator()
 
     import argparse
 
@@ -255,6 +254,7 @@ if __name__ == "__main__":
     setupLogging("tmpOut", "DEBUG")
 
     ASLIB.load_scenario(scen)
+    eva = Evaluator(ASLIB)
     if mode == "exp":
         if scen == "all":
             scenarios = ["TSP", "TSP-MORPHED", "TSP-NETGEN", "TSP-RUE", "TSP-NO-EAXRESTART", "TSP-MORPHED-NO-EAXRESTART", "TSP-NETGEN-NO-EAXRESTART", "TSP-RUE-NO-EAXRESTART"]

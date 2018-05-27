@@ -137,14 +137,20 @@ class Evaluator(object):
                 (instance_names, prediction_array)
                 e.g.: ("inst0021", [0.92, 0.34, 0.5])
         """
+        flatten = lambda l: [item for sublist in l for item in sublist]
         resultPath = os.path.join(self.base_path.format(scen, ID), str(rep)) + "/"
-        trainPred =  [a for b in [fold[epoch] for fold in np.load(resultPath+"trainPred.npz")["trainPred"]] for a in b]
-        valPred =  [a for b in [fold[epoch] for fold in np.load(resultPath+"valPred.npz")["valPred"]] for a in b]
-        testPred = [a for b in [fold[epoch] for fold in np.load(resultPath+"testPred.npz")["testPred"]] for a in b]
-        valInst =  np.load(resultPath+"instInFoldVal.npz")["valFolds"].flatten()
-        testInst = np.load(resultPath+"instInFoldTest.npz")["folds"].flatten()
+        trainPred =  np.array(flatten([fold[epoch] for fold in
+                                  np.load(resultPath+"trainPred.npz")["trainPred"]]))
+        valPred =  np.array(flatten([fold[epoch] for fold in
+                                  np.load(resultPath+"valPred.npz")["valPred"]]))
+        testPred = np.array(flatten([fold[epoch] for fold in
+                                  np.load(resultPath+"testPred.npz")["testPred"]]))
+        valInst = np.array(flatten(np.load(resultPath+"instInFoldVal.npz")["valFolds"]))
+        testInst = np.array(flatten(np.load(resultPath+"instInFoldTest.npz")["folds"]))
         val  = (valInst, valPred)
         test = (testInst, testPred)
+        log.debug("val shape: %s, %s", valInst.shape, valPred.shape)
+        log.debug("test shape: %s, %s", testInst.shape, testPred.shape)
         return val, test
 
     def _get_score_over_reps(self, scen, ID, metric="par10", mode="val", epoch=-1):
